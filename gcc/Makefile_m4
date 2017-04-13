@@ -24,11 +24,9 @@ LINKER_SCRIPT = lpc54102j512.ld
 include ./gccmake54102.mk
 
 CFLAGS += \
+    -DCHECK_SLAVE_BOOT \
     --specs=nano.specs \
     -O2
-
-STARTUP_CFLAGS += \
-    -DCHECK_SLAVE_BOOT
 
 INCLUDES += \
     -I../src/semihosting \
