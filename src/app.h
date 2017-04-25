@@ -3,6 +3,8 @@
 
 #include "loader.h"
 
+#define LOADER_VERSION                      1
+
 #define FIRMWARE_START_ADDRESS              0x00008000
 #define FIRMWARE_END_ADDRESS                0x0006FFF0
 

@@ -93,7 +93,9 @@ static void handleBleCommunication (void) {
                     case HOST_CHANNEL_PING:
                         {
                             /* Send status: loader mode */
-                            SYS_send2Host(HOST_CHANNEL_GUI, "9,99");
+                            char s[20];
+                            sprintf(s, "0,%d", LOADER_VERSION);
+                            SYS_send2Host(HOST_CHANNEL_PING, s);
                         }
                         break;
 
