@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, DF9DQ
+/* Copyright (c) 2014-2017, DF9DQ
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -66,19 +66,44 @@ typedef struct PWRD {
 
 LPCLIB_DefineRegBit(SYSCON_SYSPLLCLKSEL_SEL,        0,  2);
 enum {
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     PLLCLKSEL_SEL_IRC = 0,
     PLLCLKSEL_SEL_CLKIN = 1,
     PLLCLKSEL_SEL_RTC = 3,
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    PLLCLKSEL_SEL_FRO12 = 0,
+    PLLCLKSEL_SEL_CLKIN = 1,
+    PLLCLKSEL_SEL_RTC = 3,
+#endif
 };
 
+LPCLIB_DefineRegBit(SYSCON_MAINCLKSELA_SEL,         0,  2);
+enum {
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    MAINCLKSELA_SEL_IRC = 0,
+    MAINCLKSELA_SEL_CLKIN = 1,
+    MAINCLKSELA_SEL_WDT = 2,
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    MAINCLKSELA_SEL_FRO12 = 0,
+    MAINCLKSELA_SEL_CLKIN = 1,
+    MAINCLKSELA_SEL_WDT = 2,
+    MAINCLKSELA_SEL_FROHF = 3,
+#endif
+};
 LPCLIB_DefineRegBit(SYSCON_MAINCLKSELB_SEL,         0,  2);
 enum {
     MAINCLKSELB_SEL_MAINCLKSELA = 0,
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     MAINCLKSELB_SEL_PLLIN = 1,
+#endif
     MAINCLKSELB_SEL_PLLOUT = 2,
     MAINCLKSELB_SEL_RTC = 3,
 };
 
+
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
 LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_IRC_OSC,   3,  1);
 LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_IRC,       4,  1);
 LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_FLASH,     5,  1);
@@ -97,11 +122,44 @@ LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_VREFP,     23, 1);
 LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_32K_OSC,   24, 1);
 
 LPCLIB_DefineRegBit(SYSCON_AHBCLKDIV_DIV,           0,  8);
-
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
-LPCLIB_DefineRegBit(SYSCON_FROCTRL_SEL,             14, 1);
 #endif
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_FRO,       4,  1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_TS,        6,  1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_BOD_RST,   7,  1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_BOD_INTR,  8,  1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_ADC0,      10, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_SRAM0,     13, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_SRAM1,     14, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_SRAM2,     15, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_SRAMX,     16, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_ROM,       17, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_VDDA,      19, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_WDT_OSC,   20, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_USB_PHY,   21, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_SYS_PLL,   22, 1);
+LPCLIB_DefineRegBit(SYSCON_PDRUNCFG_PDEN_VREFP,     23, 1);
+
+LPCLIB_DefineRegBit(SYSCON_AHBCLKDIV_DIV,           0,  8);
+
+LPCLIB_DefineRegBit(SYSCON_FROCTRL_SEL,             14, 1);
+
+LPCLIB_DefineRegBit(SYSCON_FLASHCFG_FETCHCFG,       0,  2);
+LPCLIB_DefineRegBit(SYSCON_FLASHCFG_DATACFG,        2,  2);
+LPCLIB_DefineRegBit(SYSCON_FLASHCFG_ACCEL,          4,  1);
+LPCLIB_DefineRegBit(SYSCON_FLASHCFG_PREFEN,         5,  1);
+LPCLIB_DefineRegBit(SYSCON_FLASHCFG_PREFOVR,        6,  1);
+LPCLIB_DefineRegBit(SYSCON_FLASHCFG_FLASHTIM,       12, 4);
+
+LPCLIB_DefineRegBit(SYSCON_SYSPLLSTAT_LOCK,         0,  1);
+#endif
+
+
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+/* Flash wait states lookup. Index is ((system_clock_Hz - 1) / 12 MHz) */
+static const uint8_t _clkpwrFlashWaitStates[9] = {0,1,2,2,3,3,4,5,5};
+#endif
 
 
 /** Watchdog oscillator frequency [Hz] (as accurate as we can get it...) */
@@ -173,6 +231,16 @@ static const CLKPWR_Clock _CLKPWR_asyncClkselA[4] = {
         _CLKPWR_CLOCK_NONE,
         _CLKPWR_CLOCK_NONE,
         };
+static const CLKPWR_Clock _CLKPWR_fClkSel[8] = {
+        CLKPWR_CLOCK_FRO12,
+        CLKPWR_CLOCK_FROHF,
+        CLKPWR_CLOCK_SYSTEMPLL,
+        CLKPWR_CLOCK_MCLK,
+        CLKPWR_CLOCK_FRG,
+        _CLKPWR_CLOCK_NONE,
+        _CLKPWR_CLOCK_NONE,
+        _CLKPWR_CLOCK_NONE,
+        };
 #endif
 
 /** Return the clock frequency (in Hz) of an internal bus.
@@ -198,6 +266,7 @@ uint32_t CLKPWR_getBusClock (CLKPWR_Clock clock)
         case CLKPWR_CLOCK_SYSTEMPLL:
             //TODO
 return 48000000;
+
 #if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
         case CLKPWR_CLOCK_IRC:
             return IRC_FREQUENCY;
@@ -213,16 +282,28 @@ return 48000000;
         /* Branch clocks */
         case CLKPWR_CLOCK_MAIN:
             return CLKPWR_getBusClock(_CLKPWR_mainClkselB[LPC_SYSCON->MAINCLKSELB & 3]);
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
         case CLKPWR_CLOCK_CPU:
             return CLKPWR_getBusClock(CLKPWR_CLOCK_MAIN)
                     / ((LPC_SYSCON->AHBCLKDIV & SYSCON_AHBCLKDIV_DIV_Msk) >> SYSCON_AHBCLKDIV_DIV_Pos);
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
         case CLKPWR_CLOCK_ASYNCAPB:
             return CLKPWR_getBusClock(_CLKPWR_asyncClkselB[LPC_ASYNCSYSCON->ASYNCAPBCLKSELB & 3]);
 #endif
 #if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+        case CLKPWR_CLOCK_CPU:
+            return CLKPWR_getBusClock(CLKPWR_CLOCK_MAIN)
+                    / (((LPC_SYSCON->AHBCLKDIV & SYSCON_AHBCLKDIV_DIV_Msk) >> SYSCON_AHBCLKDIV_DIV_Pos) + 1);
         case CLKPWR_CLOCK_ASYNCAPB:
             return CLKPWR_getBusClock(_CLKPWR_CLOCK_ASYNCCLKSELA);
+        case CLKPWR_CLOCK_FLEXCOMM0:
+        case CLKPWR_CLOCK_FLEXCOMM1:
+        case CLKPWR_CLOCK_FLEXCOMM2:
+        case CLKPWR_CLOCK_FLEXCOMM3:
+        case CLKPWR_CLOCK_FLEXCOMM4:
+        case CLKPWR_CLOCK_FLEXCOMM5:
+        case CLKPWR_CLOCK_FLEXCOMM6:
+        case CLKPWR_CLOCK_FLEXCOMM7:
+            return CLKPWR_getBusClock(_CLKPWR_fClkSel[LPC_SYSCON->FCLKSEL[clock - CLKPWR_CLOCK_FLEXCOMM0] & 7]);
 #endif
 
         default:
@@ -259,9 +340,18 @@ LPCLIB_Result CLKPWR_setCpuClock (uint32_t targetCpuFrequency)
         return LPCLIB_SUCCESS;
     }
 
+    /* Select IRC clock before manipulating PLL */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SYSCON->MAINCLKSELA = (MAINCLKSELA_SEL_FRO12 << SYSCON_MAINCLKSELA_SEL_Pos);
+    LPC_SYSCON->MAINCLKSELB = (MAINCLKSELB_SEL_MAINCLKSELA << SYSCON_MAINCLKSELB_SEL_Pos);
+    LPC_SYSCON->AHBCLKDIV = 0;                          /* CPU clock = main clock */
+    LPC_SYSCON->SYSPLLCLKSEL = PLLCLKSEL_SEL_FRO12;
+#else
+    //TODO this seems weird...
     LPC_SYSCON->AHBCLKDIV = 1;                          /* CPU clock = main clock */
     LPC_SYSCON->SYSPLLCLKSEL = PLLCLKSEL_SEL_IRC;
     LPC_SYSCON->MAINCLKSELB = (MAINCLKSELB_SEL_PLLIN << SYSCON_MAINCLKSELB_SEL_Pos);
+#endif
 
 #if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
     inputFreq = FRO12_FREQUENCY;                        /* Running from FRO12 */
@@ -281,6 +371,51 @@ LPCLIB_Result CLKPWR_setCpuClock (uint32_t targetCpuFrequency)
     LPC_SYSCON->MAINCLKSELB =                           /* Switch main clock to PLL */
         (MAINCLKSELB_SEL_PLLOUT << SYSCON_MAINCLKSELB_SEL_Pos);
     SystemCoreClock = CLKPWR_getBusClock(CLKPWR_CLOCK_MAIN) / LPC_SYSCON->AHBCLKDIV;
+#endif
+
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+if(targetCpuFrequency==48000000){
+    // P=1 -> Fcco=96 MHz
+    // N=4 -> Fref=3 MHz
+    // M=2*16
+    uint32_t x;
+    int val;
+(void)inputFreq; //TODO
+    x = 0x80;
+    for (val = 4; val <= 256; val++) {
+        x = (((x ^ (x >> 2) ^ (x >> 3) ^ (x >> 4)) & 1) << 7) | ((x >> 1) & 0x7F);
+    }
+    LPC_SYSCON->SYSPLLNDEC = x;
+
+    x = 0x4000;
+    for (val = 16; val <= 32768; val++) {
+        x = (((x ^ (x >> 1)) & 1) << 14) | ((x >> 1) & 0x3FFF);
+    }
+    LPC_SYSCON->SYSPLLSSCTRL0 = x | (1u << 18);
+    LPC_SYSCON->SYSPLLPDEC = 0x00000062;
+
+    uint32_t selp, seli, selr;
+    selp = 30;
+    seli = 63;
+    selr = 0;
+    LPC_SYSCON->SYSPLLCTRL = 0
+                | (selr << 0)
+                | (seli << 4)
+                | (selp << 10)
+                | (1u << 18)
+                ;
+
+    LPC_SYSCON->PDRUNCFGCLR0 = SYSCON_PDRUNCFG_PDEN_SYS_PLL_Msk;
+    while (!(LPC_SYSCON->SYSPLLSTAT & SYSCON_SYSPLLSTAT_LOCK_Msk))
+        ;
+
+    /* Set flash wait states for 48 MHz operation */
+    LPC_SYSCON->FLASHCFG = (LPC_SYSCON->FLASHCFG & ~SYSCON_FLASHCFG_FLASHTIM_Msk)
+        | (_clkpwrFlashWaitStates[(targetCpuFrequency - 1) / 12000000ul] << SYSCON_FLASHCFG_FLASHTIM_Pos);
+
+    LPC_SYSCON->MAINCLKSELB =                           /* Switch main clock to PLL */
+        (MAINCLKSELB_SEL_PLLOUT << SYSCON_MAINCLKSELB_SEL_Pos);
+}
 #endif
 
     return LPCLIB_SUCCESS;

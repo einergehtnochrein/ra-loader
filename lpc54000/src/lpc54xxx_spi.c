@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, DF9DQ
+/* Copyright (c) 2016-2017, DF9DQ
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -42,7 +42,9 @@
 
 #include "lpc54xxx_clkpwr.h"
 #include "lpc54xxx_spi.h"
-
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+#include "lpc54xxx_flexcomm.h"
+#endif
 
 LPCLIB_DefineRegBit(SPI_CFG_ENABLE,                 0,  1);
 LPCLIB_DefineRegBit(SPI_CFG_MASTER,                 2,  1);
@@ -124,6 +126,65 @@ LPCLIB_DefineRegBit(SPI_INTSTAT_SSA,                4,  1);
 LPCLIB_DefineRegBit(SPI_INTSTAT_SSD,                5,  1);
 LPCLIB_DefineRegBit(SPI_INTSTAT_MSTIDLE,            8,  1);
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+LPCLIB_DefineRegBit(SPI_FIFOCFG_ENABLETX,           0,  1);
+LPCLIB_DefineRegBit(SPI_FIFOCFG_ENABLERX,           1,  1);
+LPCLIB_DefineRegBit(SPI_FIFOCFG_SIZE,               4,  2);
+LPCLIB_DefineRegBit(SPI_FIFOCFG_DMATX,              12, 1);
+LPCLIB_DefineRegBit(SPI_FIFOCFG_DMARX,              13, 1);
+LPCLIB_DefineRegBit(SPI_FIFOCFG_WAKETX,             14, 1);
+LPCLIB_DefineRegBit(SPI_FIFOCFG_WAKERX,             15, 1);
+LPCLIB_DefineRegBit(SPI_FIFOCFG_EMPTYTX,            16, 1);
+LPCLIB_DefineRegBit(SPI_FIFOCFG_EMPTYRX,            17, 1);
+
+LPCLIB_DefineRegBit(SPI_FIFOTRIG_TXLVLENA,          0,  1);
+LPCLIB_DefineRegBit(SPI_FIFOTRIG_RXLVLENA,          1,  1);
+LPCLIB_DefineRegBit(SPI_FIFOTRIG_TXLVL,             8,  4);
+LPCLIB_DefineRegBit(SPI_FIFOTRIG_RXLVL,             16, 4);
+
+LPCLIB_DefineRegBit(SPI_FIFOINTENSET_TXERR,         0,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTENSET_RXERR,         1,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTENSET_TXLVL,         2,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTENSET_RXLVL,         3,  1);
+
+LPCLIB_DefineRegBit(SPI_FIFOINTENCLR_TXERR,         0,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTENCLR_RXERR,         1,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTENCLR_TXLVL,         2,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTENCLR_RXLVL,         3,  1);
+
+LPCLIB_DefineRegBit(SPI_FIFOINTSTAT_TXERR,          0,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTSTAT_RXERR,          1,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTSTAT_TXLVL,          2,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTSTAT_RXLVL,          3,  1);
+LPCLIB_DefineRegBit(SPI_FIFOINTSTAT_PERINT,         4,  1);
+
+LPCLIB_DefineRegBit(SPI_FIFOWR_TXDATA,              0,  16);
+LPCLIB_DefineRegBit(SPI_FIFOWR_TXSSEL0_N,           16, 1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_TXSSEL1_N,           17, 1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_TXSSEL2_N,           18, 1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_TXSSEL3_N,           19, 1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_EOT,                 20, 1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_EOF,                 21, 1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_RXIGNORE,            22, 1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_LEN,                 24, 4);
+
+LPCLIB_DefineRegBit(SPI_FIFOWR_CTRL16_TXSSEL0_N,    0,  1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_CTRL16_TXSSEL1_N,    1,  1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_CTRL16_TXSSEL2_N,    2,  1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_CTRL16_TXSSEL3_N,    3,  1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_CTRL16_EOT,          4,  1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_CTRL16_EOF,          5,  1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_CTRL16_RXIGNORE,     6,  1);
+LPCLIB_DefineRegBit(SPI_FIFOWR_CTRL16_LEN,          8,  4);
+
+LPCLIB_DefineRegBit(SPI_FIFORD_RXDATA,              0,  16);
+LPCLIB_DefineRegBit(SPI_FIFORD_RXSSEL0_N,           16, 1);
+LPCLIB_DefineRegBit(SPI_FIFORD_RXSSEL1_N,           17, 1);
+LPCLIB_DefineRegBit(SPI_FIFORD_RXSSEL2_N,           18, 1);
+LPCLIB_DefineRegBit(SPI_FIFORD_RXSSEL3_N,           19, 1);
+LPCLIB_DefineRegBit(SPI_FIFORD_SOT,                 20, 1);
+#endif
+
 
 static struct SPI_Context {
     SPI_Name bus;                           /**< Bus identifier */
@@ -147,27 +208,92 @@ static struct SPI_Context {
 //TODO must have *globally* unique name...
 osMutexDef(spiAccessMutexDef0);
 osMutexDef(spiAccessMutexDef1);
+osMutexDef(spiAccessMutexDef2);
+osMutexDef(spiAccessMutexDef3);
+osMutexDef(spiAccessMutexDef4);
+osMutexDef(spiAccessMutexDef5);
+osMutexDef(spiAccessMutexDef6);
+osMutexDef(spiAccessMutexDef7);
 osSemaphoreDef(spiSyncSemaDef0);
 osSemaphoreDef(spiSyncSemaDef1);
+osSemaphoreDef(spiSyncSemaDef2);
+osSemaphoreDef(spiSyncSemaDef3);
+osSemaphoreDef(spiSyncSemaDef4);
+osSemaphoreDef(spiSyncSemaDef5);
+osSemaphoreDef(spiSyncSemaDef6);
+osSemaphoreDef(spiSyncSemaDef7);
 
 
 static const osMutexDef_t * const spiMutexes[SPI_NUM_BUSSES] = {
     osMutex(spiAccessMutexDef0), osMutex(spiAccessMutexDef1),
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    osMutex(spiAccessMutexDef2), osMutex(spiAccessMutexDef3),
+    osMutex(spiAccessMutexDef4), osMutex(spiAccessMutexDef5),
+    osMutex(spiAccessMutexDef6), osMutex(spiAccessMutexDef7),
+#endif
     };
 static const osSemaphoreDef_t * const spiSemas[SPI_NUM_BUSSES] = {
     osSemaphore(spiSyncSemaDef0), osSemaphore(spiSyncSemaDef1),
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    osSemaphore(spiSyncSemaDef2), osSemaphore(spiSyncSemaDef3),
+    osSemaphore(spiSyncSemaDef4), osSemaphore(spiSyncSemaDef5),
+    osSemaphore(spiSyncSemaDef6), osSemaphore(spiSyncSemaDef7),
+#endif
     };
-static LPC_SPI_Type * const spiPtr[SPI_NUM_BUSSES] = {LPC_SPI0, LPC_SPI1,};
-static const CLKPWR_Clockswitch spiClockswitch[SPI_NUM_BUSSES] = {CLKPWR_CLOCKSWITCH_SPI0, CLKPWR_CLOCKSWITCH_SPI1,};
-static const CLKPWR_Clock spiClock[SPI_NUM_BUSSES] = {CLKPWR_CLOCK_SPI0, CLKPWR_CLOCK_SPI1,};
+static LPC_SPI_Type * const spiPtr[SPI_NUM_BUSSES] = {
+    LPC_SPI0, LPC_SPI1,
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SPI2, LPC_SPI3, LPC_SPI4, LPC_SPI5, LPC_SPI6, LPC_SPI7,
+#endif
+    };
+static const CLKPWR_Clockswitch spiClockswitch[SPI_NUM_BUSSES] = {
+    CLKPWR_CLOCKSWITCH_SPI0, CLKPWR_CLOCKSWITCH_SPI1,
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    CLKPWR_CLOCKSWITCH_SPI2, CLKPWR_CLOCKSWITCH_SPI3,
+    CLKPWR_CLOCKSWITCH_SPI4, CLKPWR_CLOCKSWITCH_SPI5,
+    CLKPWR_CLOCKSWITCH_SPI6, CLKPWR_CLOCKSWITCH_SPI7,
+#endif
+    };
+static const CLKPWR_Clock spiClock[SPI_NUM_BUSSES] = {
+    CLKPWR_CLOCK_SPI0, CLKPWR_CLOCK_SPI1,
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    CLKPWR_CLOCK_SPI2, CLKPWR_CLOCK_SPI3,
+    CLKPWR_CLOCK_SPI4, CLKPWR_CLOCK_SPI5,
+    CLKPWR_CLOCK_SPI6, CLKPWR_CLOCK_SPI7,
+#endif
+    };
+
+/* Prototypes */
+static void SPI_commonIRQHandler (SPI_Name bus);
 
 
 /* Open an SPI bus. */
 LPCLIB_Result SPI_open (SPI_Name bus, SPI_Handle *pHandle)
 {
     SPI_Handle handle = &spiContext[bus];
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SPI_Type *spi = spiPtr[bus];
+#endif
 
     CLKPWR_enableClock(spiClockswitch[bus]);            /* Enable SPIx peripheral clock */
+
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    ((LPC_FLEXCOMM_Type *)spi)->PSELID = 2;    //TODO
+    FLEXCOMM_installHandler((FLEXCOMM_Name)bus, SPI_commonIRQHandler);
+
+    spi->FIFOCFG = 0
+                    | (1u << SPI_FIFOCFG_ENABLETX_Pos)
+                    | (1u << SPI_FIFOCFG_ENABLERX_Pos)
+                    | (0  << SPI_FIFOCFG_DMATX_Pos)
+                    | (0  << SPI_FIFOCFG_DMARX_Pos)
+                    ;
+    spi->FIFOTRIG = 0
+                    | (1u << SPI_FIFOTRIG_TXLVLENA_Pos)
+                    | (1u << SPI_FIFOTRIG_RXLVLENA_Pos)
+                    | (0  << SPI_FIFOTRIG_TXLVL_Pos)
+                    | (0  << SPI_FIFOTRIG_RXLVL_Pos)
+                    ;
+#endif
 
     if (!handle->inUse) {                               /* Do nothing if already enabled */
         handle->accessMutex = osMutexCreate(spiMutexes[bus]);
@@ -222,13 +348,32 @@ void SPI_ioctl (SPI_Handle handle, const SPI_Config *pConfig)
         switch (pConfig->opcode) {
         case SPI_OPCODE_SET_FORMAT:                     /* Set phase/polarity */
             handle->bitsPerFrame = pConfig->format.bits;
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
             spi->TXCTL = (spi->TXCTL & ~SPI_TXCTL_LEN_Msk) | (handle->bitsPerFrame << SPI_TXCTL_LEN_Pos);
-            spi->CFG = (spi->CFG & ~(SPI_CFG_CPHA_Msk | SPI_CFG_CPOL_Msk)) |
+#endif
+            spi->CFG = (spi->CFG & ~(SPI_CFG_CPHA_Msk | SPI_CFG_CPOL_Msk | SPI_CFG_ENABLE_Msk)) |
                         ((uint32_t)pConfig->format.clockFormat << SPI_CFG_CPHA_Pos);
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+            /* Preset frame length in the control bit field of the FIFOWR register */
+            spi->FIFOWR_CTRL16 = 0
+                    | (1u << SPI_FIFOWR_CTRL16_TXSSEL0_N_Pos)
+                    | (1u << SPI_FIFOWR_CTRL16_TXSSEL1_N_Pos)
+                    | (1u << SPI_FIFOWR_CTRL16_TXSSEL2_N_Pos)
+                    | (1u << SPI_FIFOWR_CTRL16_TXSSEL3_N_Pos)
+                    | (handle->bitsPerFrame << SPI_FIFOWR_CTRL16_LEN_Pos)
+                    ;
+            if (!(spi->CFG & SPI_CFG_MASTER_Msk)) {
+                /* In slave mode we must push this to the TX FIFO to become effective */
+                spi->FIFOWR = 0;    //TODO this pushes the data word 0
+            }
+#endif
+            spi->CFG |= SPI_CFG_ENABLE_Msk;
             break;
 
         case SPI_OPCODE_SET_MODE:                       /* Select master/slave mode */
+            spi->CFG &= ~SPI_CFG_ENABLE_Msk;
             spi->CFG = (spi->CFG & ~SPI_CFG_MASTER_Msk) | (pConfig->mode << SPI_CFG_MASTER_Pos);
+            spi->CFG |= SPI_CFG_ENABLE_Msk;
             break;
 
         case SPI_OPCODE_SET_BITRATE:                    /* Set clock speed */
@@ -298,7 +443,12 @@ LPCLIB_Result SPI_submitJob (SPI_Handle handle, const SPI_Job *pJob)
         /* Enable RX interrupts now. Enabling TX interrupts (= starting transmission)
          * must be done separately by calling SSP_run().
          */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
         spiPtr[handle->bus]->INTENSET = SPI_INTENSET_RXRDY_Msk;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+        spiPtr[handle->bus]->FIFOINTENSET = SPI_FIFOINTENSET_RXLVL_Msk;
+#endif
 
         /* Return now for asynchronous call */
         if (pJob->callback) {
@@ -313,7 +463,12 @@ LPCLIB_Result SPI_submitJob (SPI_Handle handle, const SPI_Job *pJob)
         }
 
         /* In sync mode force TX interrupt */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
         spiPtr[handle->bus]->INTENSET = SPI_INTENSET_TXRDY_Msk;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+        spiPtr[handle->bus]->FIFOINTENSET = SPI_FIFOINTENSET_TXLVL_Msk;
+#endif
 
         /* In sync mode we wait for the end of transaction. */
         if (osSemaphoreWait(handle->syncSema, 1000 /*TODO osWaitForever*/) > 0) {
@@ -441,13 +596,28 @@ static void SPI_commonIRQHandler (SPI_Name bus)
     event.id = LPCLIB_EVENTID_SPI;
     event.block = bus;
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     status = spi->INTSTAT;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    status = spi->FIFOINTSTAT;
+#endif
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     if (status & SPI_INTSTAT_RXRDY_Msk) {
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    if (status & SPI_FIFOINTSTAT_RXLVL_Msk) {
+#endif
         nFrames = 1;
 
         for (i = 0; i < nFrames; i++) {
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
             rxFrame = (spi->RXDAT & SPI_RXDAT_RXDAT_Msk) >> SPI_RXDAT_RXDAT_Pos;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+            rxFrame = (spi->FIFORD & SPI_FIFORD_RXDATA_Msk) >> SPI_FIFORD_RXDATA_Pos;
+#endif
 
             if (handle->job) {
                 /* Store the frame? */
@@ -474,14 +644,25 @@ static void SPI_commonIRQHandler (SPI_Name bus)
                             handle->job->callback(event);
                         }
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
                         spi->INTENSET = SPI_INTENSET_TXRDY_Msk; /* TX interrupts allowed */
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+                        spi->FIFOINTENSET = SPI_FIFOINTENSET_TXLVL_Msk; /* TX interrupts allowed */
+#endif
                     }
 
                     handle->rxPhase = handle->rxPhase->next;    /* Next RX phase */
 
                     if (!handle->rxPhase) {                     /* Will there be another phase? */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
                         spi->INTENCLR =                         /* No. Disable further interrupts */
                             SPI_INTENCLR_RXRDY_Msk | SPI_INTENCLR_TXRDY_Msk;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+                        spi->FIFOINTENCLR =                         /* No. Disable further interrupts */
+                            SPI_FIFOINTENCLR_RXLVL_Msk | SPI_FIFOINTENCLR_TXLVL_Msk;
+#endif
 
                         if (handle->job->pDeviceSelect) {
                             if (handle->job->pDeviceSelect->callback) {
@@ -500,7 +681,12 @@ static void SPI_commonIRQHandler (SPI_Name bus)
     }
 
     /* Handle TX interrupts */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     if (status & SPI_INTSTAT_TXRDY_Msk) {
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    if (status & SPI_FIFOINTSTAT_TXLVL_Msk) {
+#endif
         if (handle->job) {
             nFrames = handle->txPhase->length               /* How much is left to be sent? */
                         - handle->nsent;
@@ -512,18 +698,33 @@ if(nFrames<0)nFrames=0;
             if (handle->txPhase->txstart8) {
                 if (handle->bitsPerFrame <= SPI_BITS_8) {
                     for (i = 0; i < nFrames; i++) {
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
                         spi->TXDAT = handle->txPhase->txstart8[handle->nsent + i];
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+                        spi->FIFOWR = handle->txPhase->txstart8[handle->nsent + i];
+#endif
                     }
                 }
                 else {
                     for (i = 0; i < nFrames; i++) {
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
                         spi->TXDAT = handle->txPhase->txstart16[handle->nsent + i];
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+                        spi->FIFOWR = handle->txPhase->txstart16[handle->nsent + i];
+#endif
                     }
                 }
             }
             else {
                 for (i = 0; i < nFrames; i++) {                 /* Send that block */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
                     spi->TXDAT = handle->txPhase->idlePattern;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+                    spi->FIFOWR = handle->txPhase->idlePattern;
+#endif
                 }
             }
             handle->nsent += nFrames;
@@ -535,12 +736,22 @@ if(nFrames<0)nFrames=0;
                     || (handle->txPhase->next == NULL);        /*   Yes if we are in the last phase already */
                 handle->txPhase = handle->txPhase->next;    /* Next TX phase */
                 if (stopTx) {
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
                     spi->INTENCLR = SPI_INTENCLR_TXRDY_Msk; /* Disable further TX interrupts */
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+                    spi->FIFOINTENCLR = SPI_FIFOINTENCLR_TXLVL_Msk; /* Disable further TX interrupts */
+#endif
                 }
             }
         }
         else {
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
             spi->INTENCLR = SPI_INTENCLR_TXRDY_Msk;         /* Disable further TX interrupts */
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+            spi->FIFOINTENCLR = SPI_FIFOINTENCLR_TXLVL_Msk; /* Disable further TX interrupts */
+#endif
         }
     }
 
@@ -556,6 +767,7 @@ if(nFrames<0)nFrames=0;
 }
 
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
 /** Hardware entry for SPI0 interrupt. */
 void SPI0_IRQHandler (void)
 {
@@ -568,7 +780,7 @@ void SPI1_IRQHandler (void)
 {
     SPI_commonIRQHandler(SPI1);
 }
-
+#endif
 
 /** @} SSP */
 

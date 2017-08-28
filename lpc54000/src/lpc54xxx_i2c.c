@@ -544,6 +544,7 @@ while(1);
 
 
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
 /** I2C block interrupt entry (interrupt number \ref I2C0_IRQn).
  */
 void I2C0_IRQHandler (void)
@@ -564,6 +565,7 @@ void I2C2_IRQHandler (void)
 {
     I2C_commonIRQHandler(I2C2);
 }
+#endif
 
 
 /** @} */

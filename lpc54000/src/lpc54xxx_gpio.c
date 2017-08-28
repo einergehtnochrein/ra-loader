@@ -92,7 +92,7 @@ LPCLIB_Result GPIO_ioctl (const GPIO_Config *pConfig)
     int port;
     int intNum;
     uint32_t mask;
-    LPC_GINT_Type *pGroupInt;
+    LPC_GPIO_GROUP_INT_Type *pGroupInt;
 #endif
     LPCLIB_Result result = LPCLIB_ILLEGAL_PARAMETER;
 

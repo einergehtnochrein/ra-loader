@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, DF9DQ
+/* Copyright (c) 2016-2017, DF9DQ
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -73,12 +73,16 @@ LPCLIB_DefineRegBit(UART_STAT_PARITYERRINT,         14, 1);
 LPCLIB_DefineRegBit(UART_STAT_RXNOISEINT,           15, 1);
 LPCLIB_DefineRegBit(UART_STAT_ABERR,                16, 1);
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
 LPCLIB_DefineRegBit(UART_INTENSET_RXRDYEN,          0,  1);
 LPCLIB_DefineRegBit(UART_INTENSET_TXRDYEN,          2,  1);
+#endif
 LPCLIB_DefineRegBit(UART_INTENSET_TXIDLEEN,         3,  1);
 LPCLIB_DefineRegBit(UART_INTENSET_DELTACTSEN,       5,  1);
 LPCLIB_DefineRegBit(UART_INTENSET_TXDISEN,          6,  1);
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
 LPCLIB_DefineRegBit(UART_INTENSET_OVERRUNEN,        8,  1);
+#endif
 LPCLIB_DefineRegBit(UART_INTENSET_DELTARXBRKEN,     11, 1);
 LPCLIB_DefineRegBit(UART_INTENSET_STARTEN,          12, 1);
 LPCLIB_DefineRegBit(UART_INTENSET_FRAMEERREN,       13, 1);
@@ -86,12 +90,16 @@ LPCLIB_DefineRegBit(UART_INTENSET_PARITYERREN,      14, 1);
 LPCLIB_DefineRegBit(UART_INTENSET_RXNOISECLREN,     15, 1);
 LPCLIB_DefineRegBit(UART_INTENSET_ABERREN,          16, 1);
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
 LPCLIB_DefineRegBit(UART_INTENCLR_RXRDYCLR,         0,  1);
 LPCLIB_DefineRegBit(UART_INTENCLR_TXRDYCLR,         2,  1);
+#endif
 LPCLIB_DefineRegBit(UART_INTENCLR_TXIDLECLR,        3,  1);
 LPCLIB_DefineRegBit(UART_INTENCLR_DELTACTSCLR,      5,  1);
 LPCLIB_DefineRegBit(UART_INTENCLR_TXDISCLR,         6,  1);
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
 LPCLIB_DefineRegBit(UART_INTENCLR_OVERRUNCLR,       8,  1);
+#endif
 LPCLIB_DefineRegBit(UART_INTENCLR_DELTARXBRKCLR,    11, 1);
 LPCLIB_DefineRegBit(UART_INTENCLR_STARTCLR,         12, 1);
 LPCLIB_DefineRegBit(UART_INTENCLR_FRAMEERRCLR,      13, 1);
@@ -101,6 +109,38 @@ LPCLIB_DefineRegBit(UART_INTENCLR_ABERRCLR,         16, 1);
 
 LPCLIB_DefineRegBit(UART_OSR_OSRVAL,                0,  4);
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+LPCLIB_DefineRegBit(UART_FIFOCFG_ENABLETX,          0,  1);
+LPCLIB_DefineRegBit(UART_FIFOCFG_ENABLERX,          1,  1);
+LPCLIB_DefineRegBit(UART_FIFOCFG_SIZE,              4,  2);
+LPCLIB_DefineRegBit(UART_FIFOCFG_DMATX,             12, 1);
+LPCLIB_DefineRegBit(UART_FIFOCFG_DMARX,             13, 1);
+LPCLIB_DefineRegBit(UART_FIFOCFG_WAKETX,            14, 1);
+LPCLIB_DefineRegBit(UART_FIFOCFG_WAKERX,            15, 1);
+LPCLIB_DefineRegBit(UART_FIFOCFG_EMPTYTX,           16, 1);
+LPCLIB_DefineRegBit(UART_FIFOCFG_EMPTYRX,           17, 1);
+
+LPCLIB_DefineRegBit(UART_FIFOTRIG_TXLVLENA,         0,  1);
+LPCLIB_DefineRegBit(UART_FIFOTRIG_RXLVLENA,         1,  1);
+LPCLIB_DefineRegBit(UART_FIFOTRIG_TXLVL,            8,  4);
+LPCLIB_DefineRegBit(UART_FIFOTRIG_RXLVL,            16, 4);
+
+LPCLIB_DefineRegBit(UART_FIFOINTENSET_TXERR,        0,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTENSET_RXERR,        1,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTENSET_TXLVL,        2,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTENSET_RXLVL,        3,  1);
+
+LPCLIB_DefineRegBit(UART_FIFOINTENCLR_TXERR,        0,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTENCLR_RXERR,        1,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTENCLR_TXLVL,        2,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTENCLR_RXLVL,        3,  1);
+
+LPCLIB_DefineRegBit(UART_FIFOINTSTAT_TXERR,         0,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTSTAT_RXERR,         1,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTSTAT_TXLVL,         2,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTSTAT_RXLVL,         3,  1);
+LPCLIB_DefineRegBit(UART_FIFOINTSTAT_PERINT,        4,  1);
+#endif
 
 
 /** Local context of UART's. */
@@ -182,6 +222,19 @@ LPCLIB_Result UART_open (UART_Name uartNum, UART_Handle *pHandle)
 #if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
     ((LPC_FLEXCOMM_Type *)uart)->PSELID = 1;    //TODO
     FLEXCOMM_installHandler((FLEXCOMM_Name)uartNum, UART_commonIRQHandler);
+
+    uart->FIFOCFG = 0
+                    | (1u << UART_FIFOCFG_ENABLETX_Pos)
+                    | (1u << UART_FIFOCFG_ENABLERX_Pos)
+                    | (0  << UART_FIFOCFG_DMATX_Pos)
+                    | (0  << UART_FIFOCFG_DMARX_Pos)
+                    ;
+    uart->FIFOTRIG = 0
+                    | (1u << UART_FIFOTRIG_TXLVLENA_Pos)
+                    | (1u << UART_FIFOTRIG_RXLVLENA_Pos)
+                    | (0  << UART_FIFOTRIG_TXLVL_Pos)
+                    | (0  << UART_FIFOTRIG_RXLVL_Pos)
+                    ;
 #endif
 
     /* Cannot open a UART twice */
@@ -208,9 +261,16 @@ LPCLIB_Result UART_open (UART_Name uartNum, UART_Handle *pHandle)
         handle->txActive = false;
 
         /* Enable interrupts */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
         uart->INTENSET = 0
                     | UART_INTENSET_RXRDYEN_Msk
                     ;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+        uart->FIFOINTENSET = 0
+                    | UART_FIFOINTENSET_RXLVL_Msk
+                    ;
+#endif
 
         return LPCLIB_SUCCESS;
     }
@@ -390,7 +450,12 @@ int UART_write (UART_Handle handle, const void *buffer, int nbytes)
                 if (handle->txSyncMode) {
                     handle->txActive = true;
                     /* Enable TX interrupt. */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
                     uart->INTENSET = UART_INTENSET_TXRDYEN_Msk;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+                    uart->FIFOINTENSET = UART_FIFOINTENSET_TXLVL_Msk;
+#endif
 
                     osSemaphoreWait(handle->syncSema, 100 /*TODO*/);
                 }
@@ -402,7 +467,12 @@ int UART_write (UART_Handle handle, const void *buffer, int nbytes)
     }
 
     /* Enable TX interrupt. */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     uart->INTENSET = UART_INTENSET_TXRDYEN_Msk;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    uart->FIFOINTENSET = UART_FIFOINTENSET_TXLVL_Msk;
+#endif
 
     return nwritten;
 }
@@ -581,7 +651,12 @@ static bool UART_handleRxChar (UART_Handle handle, LPCLIB_Event *pEvent)
     uint32_t temp;
 
     /* Take character from FIFO */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     c = uart->RXDAT;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    c = uart->FIFORD;
+#endif
 
     /* If we have no buffer, we must call the callback handler. */
     if (handle->pRxBuffer == NULL) {
@@ -624,62 +699,23 @@ static void UART_commonIRQHandler (UART_Name uartNum)
 {
     LPC_UART_Type * const uart = uartPtr[uartNum];
     uint32_t stat;
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    uint32_t fifointstat;
+#endif
 //    uint8_t n;
     LPCLIB_Event event;
     UART_Handle handle = &uartContext[uartNum];
 //    volatile uint8_t dummy;
 
 
-    /* Read source of interrupt */
-    stat = uart->STAT;
-
     /* Preset some event fields */
     event.id = LPCLIB_EVENTID_UART;
     event.block = uartNum;
-#if 0
-    switch (iir & UART_IIR_INTID_Msk) {
-    if (stat & UART_STATIIR_INTID_RLS:
-        event.opcode = UART_EVENT_STATUS_LINE;
-        event.parameter = (void *)((uint32_t)(uart->LSR));
-        if (handle->callback) {
-            handle->callback(event);
-        }
-        break;
-    case UART_IIR_INTID_RDA:
-        /* We can now read up to FIFO_LEVEL characters */
-        n = uart->SCR & UART_CONTEXT_FIFO_MASK;
-        while (n > 0) {
-            lsr_reg = uart->LSR;
-            UART_handleRxChar(handle, lsr_reg, &event);
-            --n;
-        }
-        break;
 
-    case UART_IIR_INTID_CTI:
-        n = uart->SCR & UART_CONTEXT_FIFO_MASK;
-        while (n > 0) {
-            lsr_reg = uart->LSR;
-            if (lsr_reg & UART_LSR_RDR_Msk) {
-                if (!UART_handleRxChar(handle, lsr_reg, &event)) {
-                    break;
-                }
-            }
-            else {
-                break;
-            }
-            --n;
-        }
+    /* Read source of interrupt */
+    stat = uart->STAT;
 
-        /* This should never happen, but it does...
-            * In case we get this interrupt without a LSR.RBR indication, just read one character
-            * from RX FIFO and throw it away.
-            */
-        if (n == (uart->SCR & UART_CONTEXT_FIFO_MASK)) {
-            dummy = uart->RBR;
-            (void)dummy;
-        }
-        break;
-#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     if (stat & UART_STAT_RXRDY_Msk) {
         UART_handleRxChar(handle, &event);
     }
@@ -689,9 +725,25 @@ static void UART_commonIRQHandler (UART_Name uartNum)
             uart->INTENCLR = UART_INTENCLR_TXRDYCLR_Msk;
         }
     }
+#endif
+
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    fifointstat = uart->FIFOINTSTAT;
+
+    if (fifointstat & UART_FIFOINTSTAT_RXLVL_Msk) {
+        UART_handleRxChar(handle, &event);
+    }
+
+    if (fifointstat & UART_FIFOINTSTAT_TXLVL_Msk) {
+        if (!UART_handleTxChar(handle, &event)) {
+            uart->FIFOINTENCLR = UART_FIFOINTENCLR_TXLVL_Msk;
+        }
+    }
+#endif
 }
 
 
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
 /** UART0 interrupt handler.
  */
 void UART0_IRQHandler (void)
@@ -719,6 +771,7 @@ void UART3_IRQHandler (void)
 {
     UART_commonIRQHandler(UART3);
 }
+#endif
 
 /** @} */
 
