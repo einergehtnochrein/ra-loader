@@ -291,7 +291,12 @@ typedef enum CLKPWR_Reset {
 } CLKPWR_Reset;
 
 typedef enum CLKPWR_UnitPower {
-    CLKPWR_UNITPOWER___DUMMY__,
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    CLKPWR_UNITPOWER___DUMMY__,
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    CLKPWR_UNIT_USBPAD = 21,
+#endif
 } CLKPWR_UnitPower;
 
 
@@ -338,14 +343,14 @@ static void CLKPWR_disableClock (CLKPWR_Clockswitch clock);
  *
  *  \param[in] unit Unit selector
  */
-static void CLKPWR_powerUpUnit (CLKPWR_UnitPower unit);
+static void CLKPWR_unitPowerUp (CLKPWR_UnitPower unit);
 
 
 /** Power down a functional unit.
  *
  *  \param[in] unit Unit selector
  */
-static void CLKPWR_powerDownUnit (CLKPWR_UnitPower unit);
+static void CLKPWR_unitPowerDown (CLKPWR_UnitPower unit);
 
 
 /** Assert the reset signal of the selected peripheral block.
@@ -420,19 +425,29 @@ LPCLIB_Result CLKPWR_setUsbClock (void);
  *  \param[in] mode
  */
 void CLKPWR_enterPowerSaving (CLKPWR_PowerSavingMode mode);
-
-
-
-__FORCEINLINE(void CLKPWR_powerUpUnit (CLKPWR_UnitPower unit))
-{
-    (void) unit;
-}
-
-__FORCEINLINE(void CLKPWR_powerDownUnit (CLKPWR_UnitPower unit))
-{
-    (void) unit;
-}
-
+
+
+
+__FORCEINLINE(void CLKPWR_unitPowerUp (CLKPWR_UnitPower unit))
+{
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    (void)unit;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SYSCON->PDRUNCFGCLR0 = (1u << unit);
+#endif
+}
+
+__FORCEINLINE(void CLKPWR_unitPowerDown (CLKPWR_UnitPower unit))
+{
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    (void)unit;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SYSCON->PDRUNCFGSET0 = (1u << unit);
+#endif
+}
+
 __FORCEINLINE(void CLKPWR_assertPeripheralReset (CLKPWR_Reset peripheral))
 {
     if ((int)peripheral >= 64) {

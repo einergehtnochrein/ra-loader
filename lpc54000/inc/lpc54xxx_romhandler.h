@@ -60,7 +60,12 @@ struct UARTD;
 
 /** ROM driver table */
 typedef struct ROM_Table {
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     void *reserved0;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    struct USBD_API *pUsbd;
+#endif
     void *reserved1;
     void *reserved2;
     struct PWRD *pPwrd;                     /**< Power Profiles driver */
