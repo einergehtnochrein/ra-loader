@@ -9,6 +9,9 @@
 #include "loader.h"
 #include "validimage.h"
 #include "config.h"
+#if (BOARD_RA == 2)
+#  include "usbuser_config.h"
+#endif
 
 LOADER_Handle loaderTask;
 
@@ -22,7 +25,7 @@ UART_Handle blePort;
 #if (BOARD_RA == 2)
 #define BLE_UART                            UART3
 #endif
-#define BLE_PORT_TXBUF_SIZE                 512
+#define BLE_PORT_TXBUF_SIZE                 2048
 #define BLE_PORT_RXBUF_SIZE                 2048
 static uint8_t blePortTxBuf[BLE_PORT_TXBUF_SIZE];
 static uint8_t blePortRxBuf[BLE_PORT_RXBUF_SIZE];
@@ -164,6 +167,9 @@ LPCLIB_Result SYS_send2Host (int channel, const char *message)
 
 
 
+uint8_t ble2usb[1024];
+uint8_t usb2ble[1024];
+
 
 int main (void)
 {
@@ -196,6 +202,7 @@ int main (void)
         override += 2;
     }
 #endif
+
     executeFirmware = executeFirmware && (override == 0);
 
     if (executeFirmware) {
@@ -205,6 +212,11 @@ int main (void)
 
         __set_MSP(image_SP);
         ((void(*)(void))image_PC)();
+    }
+
+    /* If we are here because of missing firmware, assume override=1 */
+    if (override == 0) {
+        override = 1;
     }
 
     /********** Loader mode **********/
@@ -273,7 +285,7 @@ int main (void)
 
         case 2:
 #if (BOARD_RA == 2)
-            GPIO_writeBit(GPIO_BLE_MODESEL, 0); /* Unselect VSP mode */
+            GPIO_writeBit(GPIO_BLE_MODESEL, 1); /* Unselect VSP mode */
 #endif
             GPIO_writeBit(GPIO_BLE_AUTORUN, 0); /* Command mode (not VSP bridge mode) */
             GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
@@ -306,6 +318,29 @@ int main (void)
 
 #if (BOARD_RA == 2)
     if (override == 2) {
+        CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_USB);
+        CLKPWR_unitPowerUp(CLKPWR_UNIT_USBPAD);
+
+        LPC_SYSCON->USBCLKSEL = 0;                          /* USB clock = FROHF */
+        LPC_SYSCON->USBCLKDIV = 0;                          /* USB clock divider = 1 (FROHF = 48 MHz) */
+        LPC_SYSCON->FROCTRL |= (1u << 24) | (1u << 30);     /* USBCLKADJ=1, enable FROHF */
+
+        NVIC_EnableIRQ(USB_IRQn);
+        USBUSER_open();
+
+        while (1) {
+            int nRead;
+
+            nRead = UART_read(blePort, ble2usb, sizeof(ble2usb));
+            if (nRead > 0) {
+                USBSerial_write(ble2usb, nRead);
+            }
+
+            nRead = USBSerial_read(usb2ble, sizeof(usb2ble));
+            if (nRead > 0) {
+                UART_write(blePort, usb2ble, nRead);
+            }
+        }
     }
 #endif
 }

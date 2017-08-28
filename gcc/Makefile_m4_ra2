@@ -10,6 +10,7 @@ MAKEFILE = Makefile_m4_ra2
 
 C_SRCS = \
     main.c bsp.c \
+    usb/usbuser_config.c usb/usb_serial.c \
     loader.c validimage.c config.c
 
 CPP_SRCS =
@@ -31,6 +32,8 @@ CFLAGS += \
 
 INCLUDES += \
     -I../src/semihosting \
+    -I../src/usb \
+    -I../src/usbd \
     -I../libs/pt/pt-1.4 \
 
 #LDFLAGS += \

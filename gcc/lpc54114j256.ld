@@ -100,6 +100,7 @@ SECTIONS
 
     .bssx :
     {
+        *(.usbworkspace)
         *(.bssx)
     } >sramx
 
