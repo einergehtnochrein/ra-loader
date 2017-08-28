@@ -33,6 +33,7 @@
 #define GPIO_CHARGER_LED1                   GPIO_0_7
 #define GPIO_ENABLE_VDDA                    GPIO_0_6
 #define GPIO_FORCE_LOADER                   GPIO_0_22
+#define GPIO_FORCE_LOADER2                  GPIO_0_4
 #define GPIO_LNA_GAIN                       GPIO_1_9
 #define GPIO_VBAT_ADC_ENABLE                GPIO_0_0
 

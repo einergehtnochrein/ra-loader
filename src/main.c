@@ -180,8 +180,23 @@ int main (void)
     /* Check if image is valid */
     executeFirmware = executeFirmware && check4ValidImage(FIRMWARE_START_ADDRESS, FIRMWARE_END_ADDRESS);
 
-    /* A GPIO (PIO1_15, TP8) can be used as override (force loader entry) */
-    executeFirmware = executeFirmware && (GPIO_readBit(GPIO_FORCE_LOADER) == 1);
+    /* GPIO PIO1_15 (TP8) on Ra1 can be used as override (force loader entry when pulled low).
+     * On Ra2 this is PIO0_22 (TP3).
+     * Ra2 has an additional override (PIO0_4, TP2) to allow for up to three override scenarios:
+     * TP3=0, TP2=1: Force loader (firmware update via BLE).
+     * TP3=1, TP2=0: Bridge between BL652 and USB
+     * TP3=0, TP2=0: reserved
+     */
+    int override = 0;
+    if (GPIO_readBit(GPIO_FORCE_LOADER) == 0) {
+        override += 1;
+    }
+#if (BOARD_RA == 2)
+    if (GPIO_readBit(GPIO_FORCE_LOADER2) == 0) {
+        override += 2;
+    }
+#endif
+    executeFirmware = executeFirmware && (override == 0);
 
     if (executeFirmware) {
         /* Start firmware */
@@ -239,17 +254,36 @@ int main (void)
     GPIO_setDirBit(GPIO_ENABLE_DISP, ENABLE);
 #endif
 
-#if (BOARD_RA == 2)
-    GPIO_writeBit(GPIO_BLE_MODESEL, 1);
-#endif
-    GPIO_writeBit(GPIO_BLE_AUTORUN, 1);     /* Select BL652 "VSP Bridge to UART" mode */
     GPIO_writeBit(GPIO_ADF7021_CE, 0);
     GPIO_writeBit(GPIO_LNA_GAIN, 0);
     GPIO_writeBit(GPIO_ENABLE_VDDA, 0);     /* RF part off */
 #if (BOARD_RA == 1)
     GPIO_writeBit(GPIO_SSEL_DISP, 0);
 #endif
-    GPIO_writeBit(GPIO_BLE_RESET, 1);       /* Release BL652 reset */
+
+    /* Set BL652 operating mode depending on selected override. */
+    switch (override) {
+        case 1:
+#if (BOARD_RA == 2)
+            GPIO_writeBit(GPIO_BLE_MODESEL, 1); /* Select VSP mode */
+#endif
+            GPIO_writeBit(GPIO_BLE_AUTORUN, 1); /* VSP bridge mode (not command mode) */
+            GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
+            break;
+
+        case 2:
+#if (BOARD_RA == 2)
+            GPIO_writeBit(GPIO_BLE_MODESEL, 0); /* Unselect VSP mode */
+#endif
+            GPIO_writeBit(GPIO_BLE_AUTORUN, 0); /* Command mode (not VSP bridge mode) */
+            GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
+            break;
+
+        case 3:
+            /* Reserved. Restart CPU */
+            NVIC_SystemReset();
+            while(1);
+    }
 
     UART_open(BLE_UART, &blePort);
     UART_ioctl(blePort, blePortConfig);
@@ -261,13 +295,19 @@ int main (void)
     NVIC_EnableIRQ(UART3_IRQn);
 #endif
 
-    LOADER_open(&loaderTask);
-
-    while (1) {
-        handleBleCommunication();
-        LOADER_thread(loaderTask);
-        __WFI();
+    if (override == 1) {
+        LOADER_open(&loaderTask);
+        while (1) {
+            handleBleCommunication();
+            LOADER_thread(loaderTask);
+            __WFI();
+        }
     }
+
+#if (BOARD_RA == 2)
+    if (override == 2) {
+    }
+#endif
 }
 
 

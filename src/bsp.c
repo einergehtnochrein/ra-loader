@@ -72,6 +72,7 @@ void BSP_systemInit (void)
 #if (BOARD_RA == 2)
     IOCON_configurePinDefault(PIN_P0_0,  PIN_FUNCTION_0, PIN_PULL_NONE);        /* GPIO_0_0     VBAT_ADC_ENABLE */
     IOCON_configurePinDefault(PIN_P0_2,  PIN_FUNCTION_0, PIN_PULL_REPEATER);    /* GPIO_0_2     BLE_MODESEL */
+    IOCON_configurePinDefault(PIN_P0_4,  PIN_FUNCTION_0, PIN_PULL_UP);          /* GPIO_0_4     FORCE_LOADER2 */
     IOCON_configurePinDefault(PIN_P0_6,  PIN_FUNCTION_0, PIN_PULL_NONE);        /* GPIO_0_6     ENABLE_VDDA */
     IOCON_configurePinDefault(PIN_P0_7,  PIN_FUNCTION_0, PIN_PULL_UP);          /* GPIO_0_7     CHARGER_LED1 */
     IOCON_configurePinDefault(PIN_P0_8,  PIN_FUNCTION_0, PIN_PULL_REPEATER);    /* GPIO_0_8     BLE_AUTORUN */
