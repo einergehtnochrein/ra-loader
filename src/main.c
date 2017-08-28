@@ -8,7 +8,10 @@
 #include "app.h"
 #include "loader.h"
 #include "validimage.h"
-
+#include "config.h"
+#if (BOARD_RA == 2)
+#  include "usbuser_config.h"
+#endif
 
 LOADER_Handle loaderTask;
 
@@ -16,8 +19,13 @@ LOADER_Handle loaderTask;
 
 UART_Handle blePort;
 
+#if (BOARD_RA == 1)
 #define BLE_UART                            UART0
-#define BLE_PORT_TXBUF_SIZE                 512
+#endif
+#if (BOARD_RA == 2)
+#define BLE_UART                            UART3
+#endif
+#define BLE_PORT_TXBUF_SIZE                 2048
 #define BLE_PORT_RXBUF_SIZE                 2048
 static uint8_t blePortTxBuf[BLE_PORT_TXBUF_SIZE];
 static uint8_t blePortRxBuf[BLE_PORT_RXBUF_SIZE];
@@ -50,7 +58,7 @@ static const UART_Config blePortConfig[] = {
 
 
 
-#define COMMAND_LINE_SIZE   80
+#define COMMAND_LINE_SIZE   1024
 char commandLine[COMMAND_LINE_SIZE];
 
 static void handleBleCommunication (void) {
@@ -94,7 +102,15 @@ static void handleBleCommunication (void) {
                         {
                             /* Send status: loader mode */
                             char s[20];
-                            sprintf(s, "0,%d", LOADER_VERSION);
+                            sprintf(s, "0,%d,%d",
+                                    LOADER_VERSION,
+#if (LOADER_VERSION >= 2) && (BOARD_RA == 1)
+                                    1
+#endif
+#if (LOADER_VERSION >= 2) && (BOARD_RA == 2)
+                                    2
+#endif
+                                   );
                             SYS_send2Host(HOST_CHANNEL_PING, s);
                         }
                         break;
@@ -151,24 +167,43 @@ LPCLIB_Result SYS_send2Host (int channel, const char *message)
 
 
 
+uint8_t ble2usb[1024];
+uint8_t usb2ble[1024];
+
 
 int main (void)
 {
     GPIO_open();
 
-    GPIO_setDirBit(GPIO_1_15, DISABLE);
+    GPIO_setDirBit(GPIO_FORCE_LOADER, DISABLE);
 
     /* Shall we start the firmware image, or do we have to enter loader mode?
      * Loader mode is started if no valid firmware image is poresent or if
      * a hardware override exists.
      */
     bool executeFirmware = true;
-//LPC_IOCON->PIO1_15 = 0x1A8;
+
     /* Check if image is valid */
     executeFirmware = executeFirmware && check4ValidImage(FIRMWARE_START_ADDRESS, FIRMWARE_END_ADDRESS);
 
-    /* A GPIO (PIO1_15, TP8) can be used as override (force loader entry) */
-    executeFirmware = executeFirmware && (GPIO_readBit(GPIO_1_15) == 1);
+    /* GPIO PIO1_15 (TP8) on Ra1 can be used as override (force loader entry when pulled low).
+     * On Ra2 this is PIO0_22 (TP3).
+     * Ra2 has an additional override (PIO0_4, TP2) to allow for up to three override scenarios:
+     * TP3=0, TP2=1: Force loader (firmware update via BLE).
+     * TP3=1, TP2=0: Bridge between BL652 and USB
+     * TP3=0, TP2=0: reserved
+     */
+    int override = 0;
+    if (GPIO_readBit(GPIO_FORCE_LOADER) == 0) {
+        override += 1;
+    }
+#if (BOARD_RA == 2)
+    if (GPIO_readBit(GPIO_FORCE_LOADER2) == 0) {
+        override += 2;
+    }
+#endif
+
+    executeFirmware = executeFirmware && (override == 0);
 
     if (executeFirmware) {
         /* Start firmware */
@@ -177,6 +212,11 @@ int main (void)
 
         __set_MSP(image_SP);
         ((void(*)(void))image_PC)();
+    }
+
+    /* If we are here because of missing firmware, assume override=1 */
+    if (override == 0) {
+        override = 1;
     }
 
     /********** Loader mode **********/
@@ -188,7 +228,7 @@ int main (void)
 
     CLKPWR_setCpuClock(12000000);
 
-
+#if (BOARD_RA == 1)
     /* Prepare system FIFO */
     LPC_FIFO->FIFOCFGUSART0 = 0x00000404;
     LPC_FIFO->FIFOUPDATEUSART = 0x000F000F;
@@ -197,13 +237,13 @@ int main (void)
     LPC_FIFO->FIFOUPDATESPI = 0x00030003;
 //    LPC_SYSCON->FIFOCTRL = 0x00003030;  // SPI0/SPI1 RX/TX
 
-    /* Fractional divider for UART */
     LPC_ASYNCSYSCON->FRGCTRL = (0 << 8) | (255 << 0);   /* No FRAC, i.e. UART clock = 12 MHz */
+#endif
+#if (BOARD_RA == 2)
+    LPC_SYSCON->FRGCTRL = (0 << 8) | (255 << 0);        /* No FRAC, i.e. UART clock = 12 MHz */
 
-    NVIC_EnableIRQ(UART0_IRQn);
-
-
-
+    LPC_SYSCON->FCLKSEL[3] = 0;                         /* FLEXCOMM3 clock = FRO12M */
+#endif
 
     SystemCoreClock = CLKPWR_getBusClock(CLKPWR_CLOCK_CPU);
 
@@ -212,34 +252,97 @@ int main (void)
 
     GPIO_setDirBit(GPIO_BLE_RESET, ENABLE);
     GPIO_setDirBit(GPIO_BLE_AUTORUN, ENABLE);
-    GPIO_setDirBit(GPIO_POWER_SWITCH, DISABLE);
-    GPIO_setDirBit(GPIO_BUTTON, DISABLE);
-    GPIO_setDirBit(GPIO_SSEL_DISP, ENABLE);
-    GPIO_setDirBit(GPIO_ENABLE_DISP, ENABLE);
+#if (BOARD_RA == 2)
+    GPIO_setDirBit(GPIO_BLE_MODESEL, ENABLE);
+#endif
     GPIO_setDirBit(GPIO_ADF7021_CE, ENABLE);
     GPIO_setDirBit(GPIO_ADF7021_SLE, ENABLE);
     GPIO_setDirBit(GPIO_ENABLE_VDDA, ENABLE);
     GPIO_setDirBit(GPIO_LNA_GAIN, ENABLE);
+#if (BOARD_RA == 1)
+    GPIO_setDirBit(GPIO_POWER_SWITCH, DISABLE);
+    GPIO_setDirBit(GPIO_BUTTON, DISABLE);
+    GPIO_setDirBit(GPIO_SSEL_DISP, ENABLE);
+    GPIO_setDirBit(GPIO_ENABLE_DISP, ENABLE);
+#endif
 
-    GPIO_writeBit(GPIO_SSEL_DISP, 0);
-    GPIO_writeBit(GPIO_BLE_AUTORUN, 1);     /* Select BL652 "VSP Bridge to UART" mode */
-    GPIO_writeBit(GPIO_BLE_RESET, 1);       /* Release BL652 reset */
     GPIO_writeBit(GPIO_ADF7021_CE, 0);
     GPIO_writeBit(GPIO_LNA_GAIN, 0);
     GPIO_writeBit(GPIO_ENABLE_VDDA, 0);     /* RF part off */
+#if (BOARD_RA == 1)
+    GPIO_writeBit(GPIO_SSEL_DISP, 0);
+#endif
+
+    /* Set BL652 operating mode depending on selected override. */
+    switch (override) {
+        case 1:
+#if (BOARD_RA == 2)
+            GPIO_writeBit(GPIO_BLE_MODESEL, 1); /* Select VSP mode */
+#endif
+            GPIO_writeBit(GPIO_BLE_AUTORUN, 1); /* VSP bridge mode (not command mode) */
+            GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
+            break;
+
+        case 2:
+#if (BOARD_RA == 2)
+            GPIO_writeBit(GPIO_BLE_MODESEL, 1); /* Unselect VSP mode */
+#endif
+            GPIO_writeBit(GPIO_BLE_AUTORUN, 0); /* Command mode (not VSP bridge mode) */
+            GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
+            break;
+
+        case 3:
+            /* Reserved. Restart CPU */
+            NVIC_SystemReset();
+            while(1);
+    }
 
     UART_open(BLE_UART, &blePort);
     UART_ioctl(blePort, blePortConfig);
 
-//    SYS_open(&sys);
-    LOADER_open(&loaderTask);
+#if (BOARD_RA == 1)
+    NVIC_EnableIRQ(UART0_IRQn);
+#endif
+#if (BOARD_RA == 2)
+    NVIC_EnableIRQ(UART3_IRQn);
+#endif
 
-    while (1) {
-        handleBleCommunication();
-//        SYS_thread(sys);
-        LOADER_thread(loaderTask);
-        __WFI();
+    if (override == 1) {
+        LOADER_open(&loaderTask);
+        while (1) {
+            handleBleCommunication();
+            LOADER_thread(loaderTask);
+            __WFI();
+        }
     }
+
+#if (BOARD_RA == 2)
+    if (override == 2) {
+        CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_USB);
+        CLKPWR_unitPowerUp(CLKPWR_UNIT_USBPAD);
+
+        LPC_SYSCON->USBCLKSEL = 0;                          /* USB clock = FROHF */
+        LPC_SYSCON->USBCLKDIV = 0;                          /* USB clock divider = 1 (FROHF = 48 MHz) */
+        LPC_SYSCON->FROCTRL |= (1u << 24) | (1u << 30);     /* USBCLKADJ=1, enable FROHF */
+
+        NVIC_EnableIRQ(USB_IRQn);
+        USBUSER_open();
+
+        while (1) {
+            int nRead;
+
+            nRead = UART_read(blePort, ble2usb, sizeof(ble2usb));
+            if (nRead > 0) {
+                USBSerial_write(ble2usb, nRead);
+            }
+
+            nRead = USBSerial_read(usb2ble, sizeof(usb2ble));
+            if (nRead > 0) {
+                UART_write(blePort, usb2ble, nRead);
+            }
+        }
+    }
+#endif
 }
 
 
@@ -247,16 +350,26 @@ void SystemInit (void)
 {
     BSP_systemInit();
 
+#if (BOARD_RA == 1)
     /* Enable Asynchronous APB bus */
     LPC_SYSCON->ASYNCAPBCTRL = 1;           /* on */
     LPC_ASYNCSYSCON->ASYNCCLKDIV = 1;       /* Don't divide */
     LPC_ASYNCSYSCON->ASYNCAPBCLKSELA = 0;   /* IRC */
     LPC_ASYNCSYSCON->ASYNCAPBCLKSELB = 3;   /* Use CLKSELA */
 
-    /* Enable RAM blocks */
     CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_FIFO);
     CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_FRG0);
     CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_SRAM1);
     CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_SRAM2);
+#endif
+
+#if (BOARD_RA == 2)
+    /* Enable Asynchronous APB bus */
+    LPC_SYSCON->ASYNCAPBCTRL = 1;           /* on */
+    LPC_ASYNCSYSCON->ASYNCAPBCLKSELA = 0;   /* Main clock */
+
+    CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_SRAM1);
+    CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_SRAM2);
+#endif
 }
 

@@ -331,14 +331,26 @@ LPCLIB_Result LOADER_processCommand (LOADER_Handle handle, const char *commandLi
                         if (hostCRC32 == CRC_read(handle->crc)) {
                             CRC_close(&handle->crc);
 
-                            /* Calculate signature of loaded firmware */
-                            signImage(FIRMWARE_START_ADDRESS, FIRMWARE_END_ADDRESS);
+                            /* Check firmware stack address to distinguish Niobe1/2 */
+                            uint32_t stackAddress = ((volatile uint32_t *)FIRMWARE_START_ADDRESS)[0];
+                            bool firmwareAcceptable = false;
+#if (BOARD_RA == 1)
+                            firmwareAcceptable = (stackAddress < 0x04000000);
+#endif
+#if (BOARD_RA == 2)
+                            firmwareAcceptable = (stackAddress >= 0x04000000);
+#endif
 
-                            response = LOADER_RESPONSE_OK;
-                            handle->state = LOADER_STATE_IDLE;
+                            if (firmwareAcceptable) {
+                                /* Calculate signature of loaded firmware */
+                                signImage(FIRMWARE_START_ADDRESS, FIRMWARE_END_ADDRESS);
 
-                            // Restart system after some time
-                            osTimerStart(handle->actionTick, 500);
+                                response = LOADER_RESPONSE_OK;
+                                handle->state = LOADER_STATE_IDLE;
+
+                                // Restart system after some time
+                                osTimerStart(handle->actionTick, 500);
+                            }
                         }
                     }
                 }

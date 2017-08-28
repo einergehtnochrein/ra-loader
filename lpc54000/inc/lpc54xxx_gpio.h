@@ -394,6 +394,14 @@ static void GPIO_clr16 (GPIO_Port16 port, uint16_t value);
 static void GPIO_clr8 (GPIO_Port8 port, uint8_t value);
 
 
+/** Get port number from GPIO pin type.
+ */
+static int GPIO_getPortNumberFromPin (GPIO_Pin pin);
+
+/** Get bit number from GPIO pin type.
+ */
+static int GPIO_getBitNumberFromPin (GPIO_Pin pin);
+
 
 __FORCEINLINE(void GPIO_write32(GPIO_Port32 port, uint32_t value))
 {
@@ -493,6 +501,15 @@ __FORCEINLINE(void GPIO_clr8 (GPIO_Port8 port, uint8_t value))
     }
 }
 
+__FORCEINLINE(int GPIO_getPortNumberFromPin (GPIO_Pin pin))
+{
+    return pin / 32;
+}
+
+__FORCEINLINE(int GPIO_getBitNumberFromPin (GPIO_Pin pin))
+{
+    return pin % 32;
+}
 
 /** @} GPIO API Functions */
 

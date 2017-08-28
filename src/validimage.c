@@ -70,5 +70,7 @@ void signImage (uint32_t startAddress, uint32_t signatureAddress)
                     256,
                     NULL);
         }
+
+        free(page);
     }
 }

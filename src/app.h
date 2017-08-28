@@ -1,12 +1,10 @@
 #ifndef __APP_H
 #define __APP_H
 
+#include "bsp.h"
 #include "loader.h"
 
-#define LOADER_VERSION                      1
-
-#define FIRMWARE_START_ADDRESS              0x00008000
-#define FIRMWARE_END_ADDRESS                0x0006FFF0
+#define LOADER_VERSION                      2
 
 #define HOST_CHANNEL_PING                   0
 #define HOST_CHANNEL_GUI                    3

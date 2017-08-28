@@ -170,11 +170,11 @@ typedef enum IOCON_GlitchFilter {
 } IOCON_GlitchFilter;
 
 typedef enum IOCON_I2cMode {
-    PIN_I2CMODE_GPIO_4MA = 0,   /**< GPIO mode, 4 mA */
-    PIN_I2CMODE_GPIO_20MA = 0,  /**< GPIO mode, 4 mA */
-    PIN_I2CMODE_NORMAL = 1,     /**< I2C mode, normal and fast */
-    PIN_I2CMODE_FMPLUS = 1,     /**< I2C mode, Fast mode+ */
-    PIN_I2CMODE_HS = 1,         /**< High Speed (slave)+ */
+    PIN_I2CMODE_GPIO_4MA = 0x01,    /**< GPIO mode, 4 mA */
+    PIN_I2CMODE_GPIO_20MA = 0x11,   /**< GPIO mode, 20 mA */
+    PIN_I2CMODE_NORMAL = 0x08,      /**< I2C mode, normal and fast */
+    PIN_I2CMODE_FMPLUS = 0x38,      /**< I2C mode, Fast mode+ */
+    PIN_I2CMODE_HS = 0x38,          /**< High Speed (slave)+ */
 } IOCON_I2cMode;
 
 typedef enum IOCON_DriveStrength {

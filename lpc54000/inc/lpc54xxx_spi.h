@@ -45,6 +45,14 @@
 typedef enum SPI_Name {
     SPI0 = 0,
     SPI1,
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    SPI2,
+    SPI3,
+    SPI4,
+    SPI5,
+    SPI6,
+    SPI7,
+#endif
     SPI_NUM_BUSSES      /* In order for this element to reflect the number of SPI busses,
                          * you mustn't assign an explicit value to any of the other elements
                          * of this enum! (except for the first element which may get assigned to 0).

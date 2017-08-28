@@ -137,12 +137,22 @@ typedef enum CLKPWR_Clockswitch {
     CLKPWR_CLOCKSWITCH_I2C5                 = CLKPWR_CLOCKSWITCH_FLEXCOMM5,
     CLKPWR_CLOCKSWITCH_I2C6                 = CLKPWR_CLOCKSWITCH_FLEXCOMM6,
     CLKPWR_CLOCKSWITCH_I2C7                 = CLKPWR_CLOCKSWITCH_FLEXCOMM7,
+    CLKPWR_CLOCKSWITCH_SPI0                 = CLKPWR_CLOCKSWITCH_FLEXCOMM0,
+    CLKPWR_CLOCKSWITCH_SPI1                 = CLKPWR_CLOCKSWITCH_FLEXCOMM1,
+    CLKPWR_CLOCKSWITCH_SPI2                 = CLKPWR_CLOCKSWITCH_FLEXCOMM2,
+    CLKPWR_CLOCKSWITCH_SPI3                 = CLKPWR_CLOCKSWITCH_FLEXCOMM3,
+    CLKPWR_CLOCKSWITCH_SPI4                 = CLKPWR_CLOCKSWITCH_FLEXCOMM4,
+    CLKPWR_CLOCKSWITCH_SPI5                 = CLKPWR_CLOCKSWITCH_FLEXCOMM5,
+    CLKPWR_CLOCKSWITCH_SPI6                 = CLKPWR_CLOCKSWITCH_FLEXCOMM6,
+    CLKPWR_CLOCKSWITCH_SPI7                 = CLKPWR_CLOCKSWITCH_FLEXCOMM7,
     CLKPWR_CLOCKSWITCH_DMIC                 = 32 + 19,
     CLKPWR_CLOCKSWITCH_TIMER2               = 32 + 22,
     CLKPWR_CLOCKSWITCH_USB                  = 32 + 25,
     CLKPWR_CLOCKSWITCH_TIMER0               = 32 + 26,
     CLKPWR_CLOCKSWITCH_TIMER1               = 32 + 27,
     CLKPWR_CLOCKSWITCH_EZH                  = 32 + 31,
+    CLKPWR_CLOCKSWITCH_TIMER3               = 64 + 13,
+    CLKPWR_CLOCKSWITCH_TIMER4               = 64 + 14,
 #endif
 } CLKPWR_Clockswitch;
 
@@ -209,6 +219,7 @@ typedef enum CLKPWR_Clock {
     CLKPWR_CLOCK_SYSTEMPLLIN,
     CLKPWR_CLOCK_SYSTEMPLL,
     CLKPWR_CLOCK_ADC,
+    CLKPWR_CLOCK_FRG,
     CLKPWR_CLOCK_MCLK,
     CLKPWR_CLOCK_DMIC,
     CLKPWR_CLOCK_RTC,
@@ -217,14 +228,14 @@ typedef enum CLKPWR_Clock {
     CLKPWR_CLOCK_TIMER0 = CLKPWR_CLOCK_CPU,
     CLKPWR_CLOCK_TIMER1 = CLKPWR_CLOCK_CPU,
     CLKPWR_CLOCK_TIMER2 = CLKPWR_CLOCK_CPU,
-    CLKPWR_CLOCK_FLEXCOMM0 = CLKPWR_CLOCK_CPU,
-    CLKPWR_CLOCK_FLEXCOMM1 = CLKPWR_CLOCK_CPU,
-    CLKPWR_CLOCK_FLEXCOMM2 = CLKPWR_CLOCK_CPU,
-    CLKPWR_CLOCK_FLEXCOMM3 = CLKPWR_CLOCK_CPU,
-    CLKPWR_CLOCK_FLEXCOMM4 = CLKPWR_CLOCK_CPU,
-    CLKPWR_CLOCK_FLEXCOMM5 = CLKPWR_CLOCK_CPU,
-    CLKPWR_CLOCK_FLEXCOMM6 = CLKPWR_CLOCK_CPU,
-    CLKPWR_CLOCK_FLEXCOMM7 = CLKPWR_CLOCK_CPU,
+    CLKPWR_CLOCK_FLEXCOMM0,
+    CLKPWR_CLOCK_FLEXCOMM1,
+    CLKPWR_CLOCK_FLEXCOMM2,
+    CLKPWR_CLOCK_FLEXCOMM3,
+    CLKPWR_CLOCK_FLEXCOMM4,
+    CLKPWR_CLOCK_FLEXCOMM5,
+    CLKPWR_CLOCK_FLEXCOMM6,
+    CLKPWR_CLOCK_FLEXCOMM7,
     CLKPWR_CLOCK_UART0 = CLKPWR_CLOCK_FLEXCOMM0,
     CLKPWR_CLOCK_UART1 = CLKPWR_CLOCK_FLEXCOMM1,
     CLKPWR_CLOCK_UART2 = CLKPWR_CLOCK_FLEXCOMM2,
@@ -280,7 +291,12 @@ typedef enum CLKPWR_Reset {
 } CLKPWR_Reset;
 
 typedef enum CLKPWR_UnitPower {
-    CLKPWR_UNITPOWER___DUMMY__,
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    CLKPWR_UNITPOWER___DUMMY__,
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    CLKPWR_UNIT_USBPAD = 21,
+#endif
 } CLKPWR_UnitPower;
 
 
@@ -327,14 +343,14 @@ static void CLKPWR_disableClock (CLKPWR_Clockswitch clock);
  *
  *  \param[in] unit Unit selector
  */
-static void CLKPWR_powerUpUnit (CLKPWR_UnitPower unit);
+static void CLKPWR_unitPowerUp (CLKPWR_UnitPower unit);
 
 
 /** Power down a functional unit.
  *
  *  \param[in] unit Unit selector
  */
-static void CLKPWR_powerDownUnit (CLKPWR_UnitPower unit);
+static void CLKPWR_unitPowerDown (CLKPWR_UnitPower unit);
 
 
 /** Assert the reset signal of the selected peripheral block.
@@ -409,19 +425,29 @@ LPCLIB_Result CLKPWR_setUsbClock (void);
  *  \param[in] mode
  */
 void CLKPWR_enterPowerSaving (CLKPWR_PowerSavingMode mode);
-
-
-
-__FORCEINLINE(void CLKPWR_powerUpUnit (CLKPWR_UnitPower unit))
-{
-    (void) unit;
-}
-
-__FORCEINLINE(void CLKPWR_powerDownUnit (CLKPWR_UnitPower unit))
-{
-    (void) unit;
-}
-
+
+
+
+__FORCEINLINE(void CLKPWR_unitPowerUp (CLKPWR_UnitPower unit))
+{
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    (void)unit;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SYSCON->PDRUNCFGCLR0 = (1u << unit);
+#endif
+}
+
+__FORCEINLINE(void CLKPWR_unitPowerDown (CLKPWR_UnitPower unit))
+{
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    (void)unit;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SYSCON->PDRUNCFGSET0 = (1u << unit);
+#endif
+}
+
 __FORCEINLINE(void CLKPWR_assertPeripheralReset (CLKPWR_Reset peripheral))
 {
     if ((int)peripheral >= 64) {

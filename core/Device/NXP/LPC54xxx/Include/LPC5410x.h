@@ -441,7 +441,7 @@ typedef struct {
             __IO uint32_t PORT_ENA1;
         };
     };
-} LPC_GINT_Type;
+} LPC_GPIO_GROUP_INT_Type;
 
 
 // ------------------------------------------------------------------------------------------------
@@ -1092,8 +1092,8 @@ typedef struct
 #define LPC_DMA               ((LPC_DMA_Type            *) LPC_DMA_BASE      )
 #define LPC_FIFO              ((LPC_FIFO_Type           *) LPC_FIFO_BASE     )
 #define LPC_FLASHCTRL         ((LPC_FLASHCTRL_Type      *) LPC_FLASHCTRL_BASE)
-#define LPC_GINT0             ((LPC_GINT_Type           *) LPC_GINT0_BASE    )
-#define LPC_GINT1             ((LPC_GINT_Type           *) LPC_GINT1_BASE    )
+#define LPC_GINT0             ((LPC_GPIO_GROUP_INT_Type *) LPC_GINT0_BASE    )
+#define LPC_GINT1             ((LPC_GPIO_GROUP_INT_Type *) LPC_GINT1_BASE    )
 #define LPC_GPIO              ((LPC_GPIO_Type           *) LPC_GPIO_BASE     )
 #define LPC_I2C0              ((LPC_I2C_Type            *) LPC_I2C0_BASE     )
 #define LPC_I2C1              ((LPC_I2C_Type            *) LPC_I2C1_BASE     )
