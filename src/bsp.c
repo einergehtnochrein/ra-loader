@@ -32,6 +32,7 @@ void BSP_systemInit (void)
      */
     IOCON_open();
 
+#if (BOARD_RA == 1)
     IOCON_configurePinDefault(PIN_P0_0,  PIN_FUNCTION_1, PIN_PULL_UP);          /* U0_RXD       BLE_RXD */
     IOCON_configurePinDefault(PIN_P0_1,  PIN_FUNCTION_1, PIN_PULL_NONE);        /* U0_TXD       BLE_TXD */
     IOCON_configurePinDefault(PIN_P0_2,  PIN_FUNCTION_1, PIN_PULL_REPEATER);    /* U0_CTS       BLE_CTS */
@@ -65,6 +66,43 @@ void BSP_systemInit (void)
     IOCON_configurePinDefault(PIN_P0_30, PIN_FUNCTION_0, PIN_PULL_REPEATER);    /* GPIO_0_30    ENABLE_VDDA */
 #else
     IOCON_configurePinDefault(PIN_P0_14, PIN_FUNCTION_0, PIN_PULL_REPEATER);    /* GPIO_0_14    ENABLE_VDDA */
+#endif
+#endif
+
+#if (BOARD_RA == 2)
+    IOCON_configurePinDefault(PIN_P0_0,  PIN_FUNCTION_0, PIN_PULL_NONE);        /* GPIO_0_0     VBAT_ADC_ENABLE */
+    IOCON_configurePinDefault(PIN_P0_2,  PIN_FUNCTION_0, PIN_PULL_REPEATER);    /* GPIO_0_2     BLE_MODESEL */
+    IOCON_configurePinDefault(PIN_P0_6,  PIN_FUNCTION_0, PIN_PULL_NONE);        /* GPIO_0_6     ENABLE_VDDA */
+    IOCON_configurePinDefault(PIN_P0_7,  PIN_FUNCTION_0, PIN_PULL_UP);          /* GPIO_0_7     CHARGER_LED1 */
+    IOCON_configurePinDefault(PIN_P0_8,  PIN_FUNCTION_0, PIN_PULL_REPEATER);    /* GPIO_0_8     BLE_AUTORUN */
+    IOCON_configurePinDefault(PIN_P0_9,  PIN_FUNCTION_5, PIN_PULL_REPEATER);    /* FC3_CTS      BLE_CTS */
+    IOCON_configurePinDefault(PIN_P0_10, PIN_FUNCTION_0, PIN_PULL_NONE);        /* GPIO_0_10    BLE_EXTRA1 */
+    IOCON_configurePinDefault(PIN_P0_11, PIN_FUNCTION_0, PIN_PULL_NONE);        /* GPIO_0_11    BLE_EXTRA2 */
+    IOCON_configurePinDefault(PIN_P0_12, PIN_FUNCTION_1, PIN_PULL_UP);          /* FC3_RXD      BLE_RXD */
+    IOCON_configurePinDefault(PIN_P0_13, PIN_FUNCTION_1, PIN_PULL_NONE);        /* FC3_TXD      BLE_TXD */
+    IOCON_configurePinDefault(PIN_P0_14, PIN_FUNCTION_5, PIN_PULL_NONE);        /* FC1_SCK      SCLK_D_PDM_CLK */
+    IOCON_configurePinDefault(PIN_P0_15, PIN_FUNCTION_1, PIN_PULL_NONE);        /* FC3_RTS      BLE_RTS */
+    IOCON_configurePinDefault(PIN_P0_22, PIN_FUNCTION_0, PIN_PULL_UP);          /* GPIO_0_22    FORCE_LOADER */
+    IOCON_configurePinDefault(PIN_P0_29, PIN_FUNCTION_1, PIN_PULL_REPEATER);    /* FC1_MOSI     MOSI_D */
+    IOCON_configurePinDefault(PIN_P0_30, PIN_FUNCTION_1, PIN_PULL_REPEATER);    /* FC1_MISO     MISO_D */
+    IOCON_configurePinDefault(PIN_P1_0,  PIN_FUNCTION_1, PIN_PULL_REPEATER);    /* PDM0_DATA    SYNC_PDM_DATA */
+//    IOCON_configurePinDefault(PIN_P1_1,  PIN_FUNCTION_2, PIN_PULL_REPEATER);    /* SWO          SWO */
+    IOCON_configurePinDefault(PIN_P1_2,  PIN_FUNCTION_0, PIN_PULL_REPEATER);    /* GPIO_1_2     MUXOUT */
+    IOCON_configurePinDefault(PIN_P1_3,  PIN_FUNCTION_2, PIN_PULL_DOWN);        /* FC7_SSEL2    SLE_C */
+    IOCON_configurePinDefault(PIN_P1_4,  PIN_FUNCTION_0, PIN_PULL_NONE);        /* GPIO_1_4     ADF7021_CE */
+    IOCON_configurePin(PIN_P1_5, IOCON_makeConfigA(PIN_FUNCTION_0,              /* ADC0_8       VBAT_ADC */
+                                                   PIN_PULL_NONE,
+                                                   PIN_INPUT_NOT_INVERTED,
+                                                   PIN_ADMODE_ANALOG,
+                                                   PIN_FILTER_OFF,
+                                                   PIN_OPENDRAIN_OFF));
+    IOCON_configurePinDefault(PIN_P1_6,  PIN_FUNCTION_2, PIN_PULL_NONE);        /* FC7_SCK      SCLK_C */
+    IOCON_configurePinDefault(PIN_P1_7,  PIN_FUNCTION_2, PIN_PULL_REPEATER);    /* FC7_MOSI     MOSI_C */
+    IOCON_configurePinDefault(PIN_P1_8,  PIN_FUNCTION_2, PIN_PULL_REPEATER);    /* FC7_MISO     MISO_C */
+    IOCON_configurePinDefault(PIN_P1_9,  PIN_FUNCTION_0, PIN_PULL_REPEATER);    /* GPIO_1_9     LNA_GAIN */
+    IOCON_configurePinDefault(PIN_P1_11, PIN_FUNCTION_7, PIN_PULL_NONE);        /* USB0_VBUS    VBUS */
+    IOCON_configurePinDefault(PIN_P1_12, PIN_FUNCTION_0, PIN_PULL_REPEATER);    /* GPIO_1_12    BLE_RESET */
+    IOCON_configurePinDefault(PIN_P1_15, PIN_FUNCTION_1, PIN_PULL_REPEATER);    /* PDM0_CLK     SCLK_D_PDM_CLK */
 #endif
 
     if (IOCON_checkErrors() != LPCLIB_SUCCESS) {
