@@ -1,0 +1,41 @@
+#
+# You MUST define a project name (PROJECT),
+# the list of C source files (SRCS) and ASM source files (ASM_SRSC),
+# and the name of the linker script (LINKER_SCRIPT).
+#
+PROJECT = ra2_loader
+
+OBJDIR = obj_ra2
+MAKEFILE = Makefile_m4_ra2
+
+C_SRCS = \
+    main.c bsp.c \
+    usb/usbuser_config.c usb/usb_serial.c \
+    loader.c validimage.c config.c
+
+CPP_SRCS =
+
+ASM_SRCS =
+
+LINKER_SCRIPT = lpc54114j256.ld
+
+#
+# Include the make template
+#
+include ./gccmake54114.mk
+
+CFLAGS += \
+    -DBOARD_RA=2 \
+    -DCHECK_SLAVE_BOOT \
+    --specs=nano.specs \
+    -O2
+
+INCLUDES += \
+    -I../src/semihosting \
+    -I../src/usb \
+    -I../src/usbd \
+    -I../libs/pt/pt-1.4 \
+
+#LDFLAGS += \
+#    -u _printf_float
+
