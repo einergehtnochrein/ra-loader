@@ -225,8 +225,12 @@ int main (void)
 //    pRom->pPwrd->set_voltage(0, 96000000);
 //    CLKPWR_setCpuClock(48000000);
 
-
-    CLKPWR_setCpuClock(12000000);
+#if (BOARD_RA == 1)
+    CLKPWR_setCpuClock(12000000, CLKPWR_CLOCK_IRC);
+#endif
+#if (BOARD_RA == 2)
+    CLKPWR_setCpuClock(12000000, CLKPWR_CLOCK_FRO12);
+#endif
 
 #if (BOARD_RA == 1)
     /* Prepare system FIFO */
