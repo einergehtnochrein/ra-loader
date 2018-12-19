@@ -209,6 +209,12 @@ static const CLKPWR_Clock _CLKPWR_asyncClkselB[4] = {
         CLKPWR_CLOCK_SYSTEMPLL,
         _CLKPWR_CLOCK_ASYNCCLKSELA,
         };
+static const CLKPWR_Clock _CLKPWR_syspllClksel[4] = {
+        CLKPWR_CLOCK_IRC,
+        CLKPWR_CLOCK_CLKIN,
+        _CLKPWR_CLOCK_NONE,
+        CLKPWR_CLOCK_RTC,
+        };
 #endif
 
 
@@ -241,6 +247,16 @@ static const CLKPWR_Clock _CLKPWR_fClkSel[8] = {
         _CLKPWR_CLOCK_NONE,
         _CLKPWR_CLOCK_NONE,
         };
+static const CLKPWR_Clock _CLKPWR_syspllClksel[8] = {
+        CLKPWR_CLOCK_FRO12,
+        CLKPWR_CLOCK_CLKIN,
+        _CLKPWR_CLOCK_NONE,
+        CLKPWR_CLOCK_RTC,
+        _CLKPWR_CLOCK_NONE,
+        _CLKPWR_CLOCK_NONE,
+        _CLKPWR_CLOCK_NONE,
+        _CLKPWR_CLOCK_NONE,
+        };
 #endif
 
 /** Return the clock frequency (in Hz) of an internal bus.
@@ -263,6 +279,13 @@ uint32_t CLKPWR_getBusClock (CLKPWR_Clock clock)
         case CLKPWR_CLOCK_CLKIN:
             //TODO
             return 0;
+        case CLKPWR_CLOCK_SYSTEMPLLIN:
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+            return CLKPWR_getBusClock(_CLKPWR_syspllClksel[LPC_SYSCON->SYSPLLCLKSEL & 3]);
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+            return CLKPWR_getBusClock(_CLKPWR_syspllClksel[LPC_SYSCON->SYSPLLCLKSEL & 7]);
+#endif
         case CLKPWR_CLOCK_SYSTEMPLL:
             //TODO
 return 48000000;
@@ -321,9 +344,9 @@ return 48000000;
  *  \param[in] targetCpuFrequency Desired CPU frequency (Hz)
  *  \return ...
  */
-LPCLIB_Result CLKPWR_setCpuClock (uint32_t targetCpuFrequency)
+LPCLIB_Result CLKPWR_setCpuClock (uint32_t targetCpuFrequency, CLKPWR_Clock fundamentalClock)
 {
-    uint32_t inputFreq;
+    uint32_t inputFrequency;
 
 
     /* If core clock is yet unknown, set it to IRC frequency (reset state). */
@@ -341,30 +364,73 @@ LPCLIB_Result CLKPWR_setCpuClock (uint32_t targetCpuFrequency)
     }
 
     /* Select IRC clock before manipulating PLL */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    LPC_SYSCON->MAINCLKSELB = (MAINCLKSELB_SEL_PLLIN << SYSCON_MAINCLKSELB_SEL_Pos);
+    LPC_SYSCON->MAINCLKSELA = (MAINCLKSELA_SEL_IRC << SYSCON_MAINCLKSELA_SEL_Pos);
+    LPC_SYSCON->MAINCLKSELB = (MAINCLKSELB_SEL_MAINCLKSELA << SYSCON_MAINCLKSELB_SEL_Pos);
+    LPC_SYSCON->AHBCLKDIV = 1;                          /* CPU clock = main clock */
+    SystemCoreClock = IRC_FREQUENCY;
+#endif
 #if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
     LPC_SYSCON->MAINCLKSELA = (MAINCLKSELA_SEL_FRO12 << SYSCON_MAINCLKSELA_SEL_Pos);
     LPC_SYSCON->MAINCLKSELB = (MAINCLKSELB_SEL_MAINCLKSELA << SYSCON_MAINCLKSELB_SEL_Pos);
     LPC_SYSCON->AHBCLKDIV = 0;                          /* CPU clock = main clock */
-    LPC_SYSCON->SYSPLLCLKSEL = PLLCLKSEL_SEL_FRO12;
-#else
-    //TODO this seems weird...
-    LPC_SYSCON->AHBCLKDIV = 1;                          /* CPU clock = main clock */
-    LPC_SYSCON->SYSPLLCLKSEL = PLLCLKSEL_SEL_IRC;
-    LPC_SYSCON->MAINCLKSELB = (MAINCLKSELB_SEL_PLLIN << SYSCON_MAINCLKSELB_SEL_Pos);
+    SystemCoreClock = FRO12_FREQUENCY;
 #endif
 
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
-    inputFreq = FRO12_FREQUENCY;                        /* Running from FRO12 */
-#else
-    inputFreq = IRC_FREQUENCY;                          /* Running from IRC */
+    /* Disable PLL and set its input clock to the specified fundamental clock */
+    bool syspllClkOk = true;
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    LPC_SYSCON->PDRUNCFGSET = SYSCON_PDRUNCFG_PDEN_SYS_PLL_Msk;
+    switch (fundamentalClock) {
+        case CLKPWR_CLOCK_IRC:
+            LPC_SYSCON->SYSPLLCLKSEL = 0;
+            break;
+        case CLKPWR_CLOCK_CLKIN:
+            LPC_SYSCON->SYSPLLCLKSEL = 1;
+            break;
+        case CLKPWR_CLOCK_RTC:
+            LPC_SYSCON->SYSPLLCLKSEL = 3;
+            break;
+        default:
+            LPC_SYSCON->SYSPLLCLKSEL = 2;
+            syspllClkOk = false;
+            break;
+    }
 #endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SYSCON->PDRUNCFGSET0 = SYSCON_PDRUNCFG_PDEN_SYS_PLL_Msk;
+    switch (fundamentalClock) {
+        case CLKPWR_CLOCK_FRO12:
+            LPC_SYSCON->SYSPLLCLKSEL = 0;
+            break;
+        case CLKPWR_CLOCK_CLKIN:
+            LPC_SYSCON->SYSPLLCLKSEL = 1;
+            break;
+        case CLKPWR_CLOCK_RTC:
+            LPC_SYSCON->SYSPLLCLKSEL = 3;
+            break;
+        default:
+            LPC_SYSCON->SYSPLLCLKSEL = 7;
+            syspllClkOk = false;
+            break;
+    }
+#endif
+
+    /* Get value of input frequency */
+    inputFrequency = CLKPWR_getBusClock(fundamentalClock);
+
+if((inputFrequency==targetCpuFrequency)||!syspllClkOk){
+    SystemCoreClock=targetCpuFrequency;
+    return LPCLIB_SUCCESS;
+}
 
 #if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     /* Call Power Profiles clocking routines */
     if (pRom->pPwrd->set_voltage(0, targetCpuFrequency) != ROM_ERR_SUCCESS) {
         return LPCLIB_ERROR;
     }
-    if (pRom->pPwrd->set_pll(targetCpuFrequency / inputFreq, inputFreq) != ROM_ERR_SUCCESS) {
+    if (pRom->pPwrd->set_pll(targetCpuFrequency / inputFrequency, inputFrequency) != ROM_ERR_SUCCESS) {
         return LPCLIB_ERROR;
     }
 
@@ -376,27 +442,30 @@ LPCLIB_Result CLKPWR_setCpuClock (uint32_t targetCpuFrequency)
 #if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
 if(targetCpuFrequency==48000000){
     // P=1 -> Fcco=96 MHz
-    // N=4 -> Fref=3 MHz
-    // M=2*16
+    // N=2 -> Fref=6 MHz
+    // M=2*8
     uint32_t x;
     int val;
-(void)inputFreq; //TODO
+(void)inputFrequency; //TODO
     x = 0x80;
     for (val = 4; val <= 256; val++) {
         x = (((x ^ (x >> 2) ^ (x >> 3) ^ (x >> 4)) & 1) << 7) | ((x >> 1) & 0x7F);
     }
-    LPC_SYSCON->SYSPLLNDEC = x;
+x=0x202;
+    LPC_SYSCON->SYSPLLNDEC = x | (1u << 10);
 
     x = 0x4000;
-    for (val = 16; val <= 32768; val++) {
+    for (val = 8; val <= 32768; val++) {
         x = (((x ^ (x >> 1)) & 1) << 14) | ((x >> 1) & 0x3FFF);
     }
-    LPC_SYSCON->SYSPLLSSCTRL0 = x | (1u << 18);
-    LPC_SYSCON->SYSPLLPDEC = 0x00000062;
+    LPC_SYSCON->SYSPLLSSCTRL0 = x | (1u << 17) | (1u << 18);
+    LPC_SYSCON->SYSPLLPDEC = 0x00000062 | (1u << 7);
 
     uint32_t selp, seli, selr;
     selp = 30;
     seli = 63;
+selp = 5;
+seli = 12;
     selr = 0;
     LPC_SYSCON->SYSPLLCTRL = 0
                 | (selr << 0)
@@ -419,6 +488,36 @@ if(targetCpuFrequency==48000000){
 #endif
 
     return LPCLIB_SUCCESS;
+}
+
+
+/* Enter a power-saving mode. */
+void CLKPWR_enterPowerSaving (CLKPWR_PowerSavingMode mode)
+{
+#if 0
+    uint32_t oldPCON;
+
+    /* Clear power mode and indicators */
+    oldPCON = LPC_PMU->PCON
+            & ~(PMU_PCON_PM_Msk | PMU_PCON_NODPD_Msk);
+#endif
+    /* SLEEPDEEP bit required for anything but SLEEP mode */
+    if (mode & (1u << 16)) {
+        SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+    }
+    else {
+        SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+    }
+#if 0
+    /* Set the mode... */
+    LPC_PMU->PCON = oldPCON | (mode & 0x7);
+#endif
+    /* ...and enter it. Wait for wake-up. */
+    __WFI();
+
+    /* Make sure any subsequent WFI will simply enter SLEEP */
+//    LPC_PMU->PCON = (LPC_PMU->PCON & ~(PMU_PCON_PM_Msk)) | PMU_PCON_SLEEPFLAG_Msk | PMU_PCON_DPDFLAG_Msk;
+    SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
 }
 
 

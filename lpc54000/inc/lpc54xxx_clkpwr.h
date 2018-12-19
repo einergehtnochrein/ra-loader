@@ -291,19 +291,32 @@ typedef enum CLKPWR_Reset {
 } CLKPWR_Reset;
 
 typedef enum CLKPWR_UnitPower {
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
-    CLKPWR_UNITPOWER___DUMMY__,
-#endif
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
-    CLKPWR_UNIT_USBPAD = 21,
-#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    CLKPWR_UNITPOWER___DUMMY__,
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    CLKPWR_UNIT_FRO = 4,
+    CLKPWR_UNIT_TS = 6,
+    CLKPWR_UNIT_BODRST = 7,
+    CLKPWR_UNIT_BODINTR = 8,
+    CLKPWR_UNIT_ADC0 = 10,
+    CLKPWR_UNIT_SRAM0 = 13,
+    CLKPWR_UNIT_SRAM1 = 14,
+    CLKPWR_UNIT_SRAM2 = 15,
+    CLKPWR_UNIT_SRAMX = 16,
+    CLKPWR_UNIT_ROM = 17,
+    CLKPWR_UNIT_VDDA = 19,
+    CLKPWR_UNIT_WDTOSC = 20,
+    CLKPWR_UNIT_USBPAD = 21,
+    CLKPWR_UNIT_SYSPLL = 22,
+    CLKPWR_UNIT_VREFP = 23,
+#endif
 } CLKPWR_UnitPower;
 
 
 typedef enum CLKPWR_PowerSavingMode {
     CLKPWR_POWERSAVING_SLEEP            = (0u << 16) | (1u <<  8) | 0,
     CLKPWR_POWERSAVING_DEEPSLEEP        = (1u << 16) | (1u <<  9) | 0,
-    CLKPWR_POWERSAVING_POWERDOWN        = (1u << 16) | (1u << 10) | 1,
     CLKPWR_POWERSAVING_DEEPPOWERDOWN    = (1u << 16) | (1u << 11) | 3,
 } CLKPWR_PowerSavingMode;
 
@@ -399,7 +412,7 @@ LPCLIB_Result CLKPWR_setDivider (CLKPWR_Divider divider, uint32_t value);
  *  \param[in] targetCpuFrequency Desired CPU frequency (Hz)
  *  \return ...
  */
-LPCLIB_Result CLKPWR_setCpuClock (uint32_t targetCpuFrequency);
+LPCLIB_Result CLKPWR_setCpuClock (uint32_t targetCpuFrequency, CLKPWR_Clock fundamentalClock);
 
 
 /** Sets up the USB clock using the USB PLL.
@@ -425,29 +438,29 @@ LPCLIB_Result CLKPWR_setUsbClock (void);
  *  \param[in] mode
  */
 void CLKPWR_enterPowerSaving (CLKPWR_PowerSavingMode mode);
-
-
-
-__FORCEINLINE(void CLKPWR_unitPowerUp (CLKPWR_UnitPower unit))
-{
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
-    (void)unit;
-#endif
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
-    LPC_SYSCON->PDRUNCFGCLR0 = (1u << unit);
-#endif
-}
-
-__FORCEINLINE(void CLKPWR_unitPowerDown (CLKPWR_UnitPower unit))
-{
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
-    (void)unit;
-#endif
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
-    LPC_SYSCON->PDRUNCFGSET0 = (1u << unit);
-#endif
-}
-
+
+
+
+__FORCEINLINE(void CLKPWR_unitPowerUp (CLKPWR_UnitPower unit))
+{
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    (void)unit;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SYSCON->PDRUNCFGCLR0 = (1u << unit);
+#endif
+}
+
+__FORCEINLINE(void CLKPWR_unitPowerDown (CLKPWR_UnitPower unit))
+{
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
+    (void)unit;
+#endif
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
+    LPC_SYSCON->PDRUNCFGSET0 = (1u << unit);
+#endif
+}
+
 __FORCEINLINE(void CLKPWR_assertPeripheralReset (CLKPWR_Reset peripheral))
 {
     if ((int)peripheral >= 64) {

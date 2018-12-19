@@ -42,7 +42,6 @@
 #include "lpc54xxx_crc.h"
 #include "lpc54xxx_flexcomm.h"
 #include "lpc54xxx_gpio.h"
-#include "lpc54xxx_i2c.h"
 #include "lpc54xxx_iap.h"
 #include "lpc54xxx_iocon.h"
 #include "lpc54xxx_romhandler.h"

@@ -195,11 +195,13 @@ static const osSemaphoreDef_t * const uartSemas[UART_NUM_UARTS] = {
 
 static LPC_UART_Type * const uartPtr[UART_NUM_UARTS] = {
     LPC_USART0,(LPC_UART_Type *)LPC_UART1, LPC_USART2, LPC_USART3,};
+#if 0
 static const IRQn_Type uartIrqs[UART_NUM_UARTS] = {
     UART0_IRQn,
     UART1_IRQn,
     UART2_IRQn,
     UART3_IRQn,};
+#endif
 static const CLKPWR_Clockswitch uartClockSwitch[UART_NUM_UARTS] = {
     CLKPWR_CLOCKSWITCH_UART0, CLKPWR_CLOCKSWITCH_UART1, CLKPWR_CLOCKSWITCH_UART2, CLKPWR_CLOCKSWITCH_UART3,};
 static const CLKPWR_Clock uartClock[UART_NUM_UARTS] = {
@@ -221,7 +223,7 @@ LPCLIB_Result UART_open (UART_Name uartNum, UART_Handle *pHandle)
 
 #if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
     ((LPC_FLEXCOMM_Type *)uart)->PSELID = 1;    //TODO
-    FLEXCOMM_installHandler((FLEXCOMM_Name)uartNum, UART_commonIRQHandler);
+    FLEXCOMM_installHandler((FLEXCOMM_Name)uartNum, (FLEXCOMM_IRQHandler_t)UART_commonIRQHandler);
 
     uart->FIFOCFG = 0
                     | (1u << UART_FIFOCFG_ENABLETX_Pos)
@@ -407,6 +409,26 @@ int UART_readLine (UART_Handle handle, void *buffer, int nbytes)
     }
 
     return nread;
+}
+
+
+/* Determine number of free TX buffer entries */
+int UART_getTxFree (UART_Handle handle)
+{
+    if (handle == LPCLIB_INVALID_HANDLE) {
+        return -1;
+    }
+
+    if (handle->pTxBuffer == NULL) {
+        return -1;
+    }
+
+    uint32_t rdIndex = handle->txReadIndex;
+    if (rdIndex > handle->txWriteIndex) {
+        return rdIndex - handle->txWriteIndex;
+    }
+
+    return handle->txBufferSize - 1 - (handle->txWriteIndex - rdIndex);
 }
 
 
@@ -601,6 +623,12 @@ void UART_ioctl (UART_Handle handle, const UART_Config *pConfig)
             break;
 #endif
 
+        case UART_OPCODE_SET_HARDWARE_HANDSHAKE:
+            uart->CFG = (uart->CFG & ~UART_CFG_CTSEN_Msk)
+                    | (pConfig->hardwareHandshake ? UART_CFG_CTSEN_Msk : 0)
+                    ;
+            break;
+
         case UART_OPCODE_INVALID:
         default:
             /* ignore */
@@ -698,7 +726,9 @@ static bool UART_handleRxChar (UART_Handle handle, LPCLIB_Event *pEvent)
 static void UART_commonIRQHandler (UART_Name uartNum)
 {
     LPC_UART_Type * const uart = uartPtr[uartNum];
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     uint32_t stat;
+#endif
 #if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5411X
     uint32_t fifointstat;
 #endif
@@ -712,10 +742,9 @@ static void UART_commonIRQHandler (UART_Name uartNum)
     event.id = LPCLIB_EVENTID_UART;
     event.block = uartNum;
 
-    /* Read source of interrupt */
+#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     stat = uart->STAT;
 
-#if LPCLIB_FAMILY == LPCLIB_FAMILY_LPC5410X
     if (stat & UART_STAT_RXRDY_Msk) {
         UART_handleRxChar(handle, &event);
     }
