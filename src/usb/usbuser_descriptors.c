@@ -118,17 +118,16 @@ ALIGNED(4) const __PACKED(struct {
         .bMaxPower              = 150/2,
     },
 
-
-    .IAD = {
-        .bLength                = USB_INTERFACE_ASSOCIATION_DESC_SIZE,
-        .bDescriptorType        = USB_INTERFACE_ASSOCIATION_DESCRIPTOR_TYPE,
-        .bFirstInterface        = USBCONFIG_INTERFACE_CIF,
-        .bInterfaceCount        = 2,
-        .bFunctionClass         = CDC_COMMUNICATION_INTERFACE_CLASS,
-        .bFunctionSubClass      = CDC_ABSTRACT_CONTROL_MODEL,
-        .bFunctionProtocol      = CDC_PROTOCOL_COMMON_AT_COMMANDS,
-        .iFunction              = 0,
-    },
+    .IAD = {
+        .bLength                = USB_INTERFACE_ASSOCIATION_DESC_SIZE,
+        .bDescriptorType        = USB_INTERFACE_ASSOCIATION_DESCRIPTOR_TYPE,
+        .bFirstInterface        = USBCONFIG_INTERFACE_CIF,
+        .bInterfaceCount        = 2,
+        .bFunctionClass         = CDC_COMMUNICATION_INTERFACE_CLASS,
+        .bFunctionSubClass      = CDC_ABSTRACT_CONTROL_MODEL,
+        .bFunctionProtocol      = CDC_PROTOCOL_COMMON_AT_COMMANDS,
+        .iFunction              = 0,
+    },
 
     .CIF = {
         .interface = {
@@ -155,7 +154,13 @@ ALIGNED(4) const __PACKED(struct {
                 .bLength                = CDC_ABSTRACT_CONTROL_MANAGEMENT_DESC_SIZE,
                 .bDescriptorType        = CDC_CS_INTERFACE,
                 .bDescriptorSubtype     = CDC_ABSTRACT_CONTROL_MANAGEMENT,
-                .bmCapabilities         = 0x02,
+                .bmCapabilities         = 0
+                                        | (1u << 1)     /* Set_Line_Coding, Get_Line_Coding
+                                                         * Set_Control_Line_State
+                                                         * Serial_State notification
+                                                         */
+                                        | (1u << 2)     /* Send_Break */
+                                        ,
             },
 
             .unionInterface = {
