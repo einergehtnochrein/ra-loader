@@ -29,6 +29,8 @@ UART_Handle blePort;
 #define BLE_PORT_RXBUF_SIZE                 2048
 static uint8_t blePortTxBuf[BLE_PORT_TXBUF_SIZE];
 static uint8_t blePortRxBuf[BLE_PORT_RXBUF_SIZE];
+static volatile int blePortBreakTime;
+static volatile bool blePortSetBreak;
 
 
 
@@ -55,7 +57,21 @@ static const UART_Config blePortConfig[] = {
     UART_CONFIG_END
 };
 
+#if (BOARD_RA == 2)
+static const UART_Config blePortConfigBreakEnable[] = {
+    {.opcode = UART_OPCODE_SET_BREAK,
+        {.enableBreak = LPCLIB_YES, }},
 
+    UART_CONFIG_END
+};
+
+static const UART_Config blePortConfigBreakDisable[] = {
+    {.opcode = UART_OPCODE_SET_BREAK,
+        {.enableBreak = LPCLIB_NO, }},
+
+    UART_CONFIG_END
+};
+#endif
 
 
 #define COMMAND_LINE_SIZE   1024
@@ -161,6 +177,15 @@ LPCLIB_Result SYS_send2Host (int channel, const char *message)
     UART_write(blePort, s, strlen(s));
 
     free(s);
+
+    return LPCLIB_SUCCESS;
+}
+
+
+LPCLIB_Result SYS_sendBreak (int durationMilliseconds)
+{
+    blePortBreakTime = durationMilliseconds;
+    blePortSetBreak = true;
 
     return LPCLIB_SUCCESS;
 }
@@ -343,6 +368,18 @@ int main (void)
             nRead = USBSerial_read(usb2ble, sizeof(usb2ble));
             if (nRead > 0) {
                 UART_write(blePort, usb2ble, nRead);
+            }
+
+            /* Change TX break? */
+            if (blePortSetBreak) {
+                blePortSetBreak = false;
+
+                if (blePortBreakTime != 0) {
+                    UART_ioctl(blePort, blePortConfigBreakEnable);
+                }
+                else {
+                    UART_ioctl(blePort, blePortConfigBreakDisable);
+                }
             }
         }
     }

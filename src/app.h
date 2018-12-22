@@ -13,5 +13,6 @@
 extern LOADER_Handle loaderTask;
 
 LPCLIB_Result SYS_send2Host (int channel, const char *message);
+LPCLIB_Result SYS_sendBreak (int durationMilliseconds);
 
 #endif

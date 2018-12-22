@@ -34,6 +34,7 @@
 #include "lpclib.h"
 
 #include "usbuser_config.h"
+#include "app.h"
 
 
 #define TX_BUFFER_SIZE1                     2048
@@ -101,6 +102,20 @@ static ErrorCode_t USBSerial_SetControlLineState (USBD_HANDLE_T hCDC, uint16_t s
 }
 
 
+
+static ErrorCode_t USBSerial_SendBreak (USBD_HANDLE_T hCDC, uint16_t mstime)
+{
+    (void)hCDC;
+
+    int durationMilliseconds = -1;
+    if (mstime != 0xFFFF) {
+        durationMilliseconds = mstime;
+    }
+
+    SYS_sendBreak(durationMilliseconds);
+
+    return LPC_OK;
+}
 
 
 
@@ -272,6 +287,7 @@ ErrorCode_t USBSerial_init(USBD_HANDLE_T hUsb,
     cdcParam.cif_intf_desc = (uint8_t *)pCifIntfDesc;
     cdcParam.dif_intf_desc = (uint8_t *)pDifIntfDesc;
     cdcParam.SetCtrlLineState = USBSerial_SetControlLineState;
+    cdcParam.SendBreak = USBSerial_SendBreak;
     cdcParam.SetLineCode = USBSerial_SetLineCode;
     ret = pRom->pUsbd->cdc->init(handle->hUsb, &cdcParam, &handle->hCdc);
 
