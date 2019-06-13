@@ -23,6 +23,7 @@ ErrorCode_t USBSerial_init(
 int USBSerial_read (void *message, int maxLen);
 void USBSerial_write (const void *message, int len);
 void USBSerial_sendNotification(uint8_t type, uint16_t data);
+void USBSERIAL_worker (void);
 
 
 #ifdef __cplusplus
