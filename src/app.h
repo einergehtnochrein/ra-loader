@@ -4,7 +4,7 @@
 #include "bsp.h"
 #include "loader.h"
 
-#define LOADER_VERSION                      2
+#define LOADER_VERSION                      3
 
 #define HOST_CHANNEL_PING                   0
 #define HOST_CHANNEL_GUI                    3
@@ -13,5 +13,6 @@
 extern LOADER_Handle loaderTask;
 
 LPCLIB_Result SYS_send2Host (int channel, const char *message);
+LPCLIB_Result SYS_sendBreak (int durationMilliseconds);
 
 #endif

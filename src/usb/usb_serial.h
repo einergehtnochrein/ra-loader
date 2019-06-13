@@ -7,7 +7,11 @@ extern "C"
 {
 #endif
 
+#include <stdint.h>
+
 #define CONSUMER_REPORT_SIZE                1
+
+typedef struct _USBSerial_Context *USBSerial_Handle;
 
 ErrorCode_t USBSerial_init(
         USBD_HANDLE_T hUsb,
@@ -17,8 +21,9 @@ ErrorCode_t USBSerial_init(
         uint32_t *mem_size);
 
 int USBSerial_read (void *message, int maxLen);
-
 void USBSerial_write (const void *message, int len);
+void USBSerial_sendNotification(uint8_t type, uint16_t data);
+void USBSERIAL_worker (void);
 
 
 #ifdef __cplusplus

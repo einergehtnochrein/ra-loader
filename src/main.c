@@ -29,6 +29,8 @@ UART_Handle blePort;
 #define BLE_PORT_RXBUF_SIZE                 2048
 static uint8_t blePortTxBuf[BLE_PORT_TXBUF_SIZE];
 static uint8_t blePortRxBuf[BLE_PORT_RXBUF_SIZE];
+static volatile int blePortBreakTime;
+static volatile bool blePortSetBreak;
 
 
 
@@ -52,10 +54,27 @@ static const UART_Config blePortConfig[] = {
     {.opcode = UART_OPCODE_SET_BAUDRATE,
         {.baudrate = 115200,}},
 
+    {.opcode = UART_OPCODE_SET_HARDWARE_HANDSHAKE,
+        {.hardwareHandshake = ENABLE,}},
+
     UART_CONFIG_END
 };
 
+#if (BOARD_RA == 2)
+static const UART_Config blePortConfigBreakEnable[] = {
+    {.opcode = UART_OPCODE_SET_BREAK,
+        {.enableBreak = LPCLIB_YES, }},
 
+    UART_CONFIG_END
+};
+
+static const UART_Config blePortConfigBreakDisable[] = {
+    {.opcode = UART_OPCODE_SET_BREAK,
+        {.enableBreak = LPCLIB_NO, }},
+
+    UART_CONFIG_END
+};
+#endif
 
 
 #define COMMAND_LINE_SIZE   1024
@@ -166,9 +185,18 @@ LPCLIB_Result SYS_send2Host (int channel, const char *message)
 }
 
 
+LPCLIB_Result SYS_sendBreak (int durationMilliseconds)
+{
+    blePortBreakTime = durationMilliseconds;
+    blePortSetBreak = true;
 
-uint8_t ble2usb[1024];
-uint8_t usb2ble[1024];
+    return LPCLIB_SUCCESS;
+}
+
+
+
+uint8_t ble2usb[2048];
+uint8_t usb2ble[2048];
 
 
 int main (void)
@@ -225,8 +253,12 @@ int main (void)
 //    pRom->pPwrd->set_voltage(0, 96000000);
 //    CLKPWR_setCpuClock(48000000);
 
-
-    CLKPWR_setCpuClock(12000000);
+#if (BOARD_RA == 1)
+    CLKPWR_setCpuClock(12000000, CLKPWR_CLOCK_IRC);
+#endif
+#if (BOARD_RA == 2)
+    CLKPWR_setCpuClock(12000000, CLKPWR_CLOCK_FRO12);
+#endif
 
 #if (BOARD_RA == 1)
     /* Prepare system FIFO */
@@ -285,7 +317,7 @@ int main (void)
 
         case 2:
 #if (BOARD_RA == 2)
-            GPIO_writeBit(GPIO_BLE_MODESEL, 1); /* Unselect VSP mode */
+            GPIO_writeBit(GPIO_BLE_MODESEL, 0); /* Unselect VSP mode */
 #endif
             GPIO_writeBit(GPIO_BLE_AUTORUN, 0); /* Command mode (not VSP bridge mode) */
             GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
@@ -328,17 +360,40 @@ int main (void)
         NVIC_EnableIRQ(USB_IRQn);
         USBUSER_open();
 
-        while (1) {
-            int nRead;
+        int nReadUart = 0;
+        int nReadUsb = 0;
+        int nWrittenUart = 0;
 
-            nRead = UART_read(blePort, ble2usb, sizeof(ble2usb));
-            if (nRead > 0) {
-                USBSerial_write(ble2usb, nRead);
+        while (1) {
+            USBSERIAL_worker();
+
+            nReadUart = UART_read(blePort, ble2usb, sizeof(ble2usb));
+            if (nReadUart > 0) {
+                USBSerial_write(ble2usb, nReadUart);
             }
 
-            nRead = USBSerial_read(usb2ble, sizeof(usb2ble));
-            if (nRead > 0) {
-                UART_write(blePort, usb2ble, nRead);
+            if (nReadUsb == 0) {
+                nReadUsb = USBSerial_read(usb2ble, sizeof(usb2ble));
+                nWrittenUart = 0;
+            }
+            if (nReadUsb > 0) {
+                nWrittenUart += UART_write(blePort, &usb2ble[nWrittenUart], nReadUsb);
+                nReadUsb -= nWrittenUart;
+                if (nReadUsb < 0) {
+                    nReadUsb = 0;
+                }
+            }
+
+            /* Change TX break? */
+            if (blePortSetBreak) {
+                blePortSetBreak = false;
+
+                if (blePortBreakTime != 0) {
+                    UART_ioctl(blePort, blePortConfigBreakEnable);
+                }
+                else {
+                    UART_ioctl(blePort, blePortConfigBreakDisable);
+                }
             }
         }
     }

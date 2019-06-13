@@ -1,8 +1,8 @@
 /* Describe the available memory blocks */
 MEMORY
 {
-    flash           : ORIGIN = 0x00000000, LENGTH = 512K-32K
-    parameter       : ORIGIN = 0x00078000, LENGTH = 32K
+    flash           : ORIGIN = 0x00000000, LENGTH = 32K
+    config          : ORIGIN = 0x00078000, LENGTH = 32K
 
     sram0           : ORIGIN = 0x02000000, LENGTH = 64K
     sram1           : ORIGIN = 0x02010000, LENGTH = 32K
@@ -91,10 +91,10 @@ SECTIONS
         *(.bss2)
     } >sram2
 
-    .parameter :
+    .config (NOLOAD) :
     {
-        *(.rinexdata)
-    } >parameter
+        KEEP(*(.config))
+    } >config
 
 
     /* The scatter table defines sections to be initialized by the startup code.

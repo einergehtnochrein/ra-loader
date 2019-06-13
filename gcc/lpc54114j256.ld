@@ -104,6 +104,11 @@ SECTIONS
         *(.bssx)
     } >sramx
 
+    .config (NOLOAD) :
+    {
+        KEEP(*(.config))
+    } >config
+
     /* The scatter table defines sections to be initialized by the startup code.
      * An entry starts with one of these 32-bit words:
      * 0 = end of table

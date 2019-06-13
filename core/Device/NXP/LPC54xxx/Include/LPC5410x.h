@@ -222,7 +222,7 @@ typedef struct {
     __IO uint32_t FIFOCFGSPI0;
     __IO uint32_t FIFOCFGSPI1;
     __I  uint32_t RESERVED0218[(0x1000-0x0218)/4];
-    union {
+    struct {
         __IO uint32_t CFGUSART0;
         __IO uint32_t STATUSART0;
         __I  uint32_t INTSTATUSART0;
@@ -233,7 +233,7 @@ typedef struct {
         __O  uint32_t TXDATUSART0;
         __I  uint32_t RESERVED1020[(0x1100-0x1020)/4];
     };
-    union {
+    struct {
         __IO uint32_t CFGUSART1;
         __IO uint32_t STATUSART1;
         __I  uint32_t INTSTATUSART1;
@@ -243,6 +243,49 @@ typedef struct {
         __I  uint32_t RXDATSTATUSART1;
         __O  uint32_t TXDATUSART1;
         __I  uint32_t RESERVED1120[(0x1200-0x1120)/4];
+    };
+    struct {
+        __IO uint32_t CFGUSART2;
+        __IO uint32_t STATUSART2;
+        __I  uint32_t INTSTATUSART2;
+        __IO uint32_t CTLSETUSART2;
+        __O  uint32_t CTLCLRUSART2;
+        __I  uint32_t RXDATUSART2;
+        __I  uint32_t RXDATSTATUSART2;
+        __O  uint32_t TXDATUSART2;
+        __I  uint32_t RESERVED1220[(0x1300-0x1220)/4];
+    };
+    struct {
+        __IO uint32_t CFGUSART3;
+        __IO uint32_t STATUSART3;
+        __I  uint32_t INTSTATUSART3;
+        __IO uint32_t CTLSETUSART3;
+        __O  uint32_t CTLCLRUSART3;
+        __I  uint32_t RXDATUSART3;
+        __I  uint32_t RXDATSTATUSART3;
+        __O  uint32_t TXDATUSART3;
+        __I  uint32_t RESERVED1320[(0x1400-0x1320)/4];
+    };
+    __I  uint32_t RESERVED1400[(0x2000-0x1400)/4];
+    struct {
+        __IO uint32_t CFGSPI0;
+        __IO uint32_t STATSPI0;
+        __I  uint32_t INTSTATSPI0;
+        __IO uint32_t CTLSETSPI0;
+        __O  uint32_t CTLCLRSPI0;
+        __I  uint32_t RXDATSPI0;
+        __O  uint32_t TXDATCTLSPI0;
+        __I  uint32_t RESERVED201C[(0x2100-0x201C)/4];
+    };
+    struct {
+        __IO uint32_t CFGSPI1;
+        __IO uint32_t STATSPI1;
+        __I  uint32_t INTSTATSPI1;
+        __IO uint32_t CTLSETSPI1;
+        __O  uint32_t CTLCLRSPI1;
+        __I  uint32_t RXDATSPI1;
+        __O  uint32_t TXDATCTLSPI1;
+        __I  uint32_t RESERVED211C[(0x2200-0x211C)/4];
     };
 } LPC_FIFO_Type;
 
@@ -819,6 +862,17 @@ typedef struct {
 
 
 // ------------------------------------------------------------------------------------------------
+// -----                                 SYSCONEXTRA                                          -----
+// ------------------------------------------------------------------------------------------------
+
+typedef struct
+{
+    __I  uint32_t RESERVED000[(0x044-0x000)/4];
+    __IO uint32_t BODCTRL;
+} LPC_SYSCONEXTRA_Type;
+
+
+// ------------------------------------------------------------------------------------------------
 // -----                                        Timer                                       -----
 // ------------------------------------------------------------------------------------------------
 
@@ -1011,12 +1065,12 @@ typedef struct
     __O  uint32_t PDRUNCFGSET;
     __O  uint32_t PDRUNCFGCLR;
     __I  uint32_t RESERVED21C[(0x240-0x21C)/4];
-    __IO uint32_t STARTERP0;
-    __IO uint32_t STARTERP1;
-    __O  uint32_t STARTERPSET0;
-    __O  uint32_t STARTERPSET1;
-    __O  uint32_t STARTERPCLR0;
-    __O  uint32_t STARTERPCLR1;
+    __IO uint32_t STARTER0;
+    __IO uint32_t STARTER1;
+    __O  uint32_t STARTERSET0;
+    __O  uint32_t STARTERSET1;
+    __O  uint32_t STARTERCLR0;
+    __O  uint32_t STARTERCLR1;
     __I  uint32_t RESERVED258[(0x300-0x258)/4];
     __IO uint32_t CPUCTRL;
     __IO uint32_t CPBOOT;
@@ -1052,6 +1106,7 @@ typedef struct
 #define LPC_IOCON_BASE        (LPC_APB0_BASE + 0x1C000)
 #define LPC_UTICK_BASE        (LPC_APB0_BASE + 0x20000)
 #define LPC_FLASHCTRL_BASE    (LPC_APB0_BASE + 0x24000)
+#define LPC_SYSCONEXTRA_BASE  (LPC_APB0_BASE + 0x2C000)
 #define LPC_WWDT_BASE         (LPC_APB0_BASE + 0x38000)
 #define LPC_RTC_BASE          (LPC_APB0_BASE + 0x3C000)
 #define LPC_INPUTMUX_BASE     (LPC_APB0_BASE + 0x50000)
@@ -1109,6 +1164,7 @@ typedef struct
 #define LPC_SPI0              ((LPC_SPI_Type            *) LPC_SPI0_BASE     )
 #define LPC_SPI1              ((LPC_SPI_Type            *) LPC_SPI1_BASE     )
 #define LPC_SYSCON            ((LPC_SYSCON_Type         *) LPC_SYSCON_BASE   )
+#define LPC_SYSCONEXTRA       ((LPC_SYSCONEXTRA_Type    *) LPC_SYSCONEXTRA_BASE)
 #define LPC_TIMER0            ((LPC_TIMER_Type          *) LPC_TIM0_BASE     )
 #define LPC_TIMER1            ((LPC_TIMER_Type          *) LPC_TIM1_BASE     )
 #define LPC_TIMER2            ((LPC_TIMER_Type          *) LPC_TIM2_BASE     )

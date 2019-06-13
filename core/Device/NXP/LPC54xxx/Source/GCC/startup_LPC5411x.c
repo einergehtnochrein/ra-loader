@@ -76,6 +76,8 @@ void PIN_INT6_IRQHandler (void) ALIAS(Default_IRQHandler);
 void PIN_INT7_IRQHandler (void) ALIAS(Default_IRQHandler);
 void TIMER2_IRQHandler (void) ALIAS(Default_IRQHandler);
 void TIMER4_IRQHandler (void) ALIAS(Default_IRQHandler);
+void IRQ38_IRQHandler (void) ALIAS(Default_IRQHandler);
+void IRQ39_IRQHandler (void) ALIAS(Default_IRQHandler);
 
 
 
@@ -139,8 +141,8 @@ void (*vector_table[])(void) __attribute__ ((section(".vectors"))) =
     PIN_INT7_IRQHandler,
     TIMER2_IRQHandler,
     TIMER4_IRQHandler,
-    0,
-    0,
+    IRQ38_IRQHandler,
+    IRQ39_IRQHandler,
 };
 
 

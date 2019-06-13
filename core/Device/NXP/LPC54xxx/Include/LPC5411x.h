@@ -8,14 +8,14 @@
 
 typedef enum IRQn {
     /******  Cortex-M4 Processor Exceptions Numbers ***************************************************/
-    NonMaskableInt_IRQn         = -14,      /*!< 2 Non Maskable Interrupt                         */
-    MemoryManagement_IRQn       = -12,      /*!< 4 Cortex-M3 Memory Management Interrupt          */
-    BusFault_IRQn               = -11,      /*!< 5 Cortex-M3 Bus Fault Interrupt                  */
-    UsageFault_IRQn             = -10,      /*!< 6 Cortex-M3 Usage Fault Interrupt                */
-    SVCall_IRQn                 = -5,       /*!< 11 Cortex-M3 SV Call Interrupt                   */
-    DebugMonitor_IRQn           = -4,       /*!< 12 Cortex-M3 Debug Monitor Interrupt             */
-    PendSV_IRQn                 = -2,       /*!< 14 Cortex-M3 Pend SV Interrupt                   */
-    SysTick_IRQn                = -1,       /*!< 15 Cortex-M3 System Tick Interrupt               */
+    NonMaskableInt_IRQn         = -14,
+    MemoryManagement_IRQn       = -12,
+    BusFault_IRQn               = -11,
+    UsageFault_IRQn             = -10,
+    SVCall_IRQn                 = -5,
+    DebugMonitor_IRQn           = -4,
+    PendSV_IRQn                 = -2,
+    SysTick_IRQn                = -1,
 
     /******  LPC5411x Specific Interrupt Numbers *******************************************************/
     WDT_BOD_IRQn                = 0,
@@ -81,6 +81,9 @@ typedef enum IRQn {
     PIN_INT7_IRQn               = 35,
     TIMER2_IRQn                 = 36,
     TIMER4_IRQn                 = 37,
+
+    IRQ38_IRQn                  = 38,
+    IRQ39_IRQn                  = 39,
 } IRQn_Type;
 
 
@@ -93,7 +96,7 @@ typedef enum IRQn {
 /* Configuration of the Cortex-M3 Processor and Core Peripherals */
 #define __MPU_PRESENT             1         /*!< MPU present or not                               */
 #define __FPU_PRESENT             1
-#define __NVIC_PRIO_BITS          5         /*!< Number of Bits used for Priority Levels          */
+#define __NVIC_PRIO_BITS          3         /*!< Number of Bits used for Priority Levels          */
 #define __Vendor_SysTickConfig    0         /*!< Set to 1 if different SysTick Config is used     */
 
 
@@ -137,7 +140,6 @@ typedef struct {
             __I  uint32_t DAT9;
             __I  uint32_t DAT10;
             __I  uint32_t DAT11;
-            __I  uint32_t DAT12;
         };
     };
     __IO uint32_t THR0_LOW;
@@ -235,7 +237,7 @@ typedef struct {
 
 typedef struct {
     union {
-        __IO uint8_t B[41];
+        __IO uint8_t B[50];
         struct {
             __IO uint8_t B0;
             __IO uint8_t B1;
@@ -278,11 +280,20 @@ typedef struct {
             __IO uint8_t B38;
             __IO uint8_t B39;
             __IO uint8_t B40;
+            __IO uint8_t B41;
+            __IO uint8_t B42;
+            __IO uint8_t B43;
+            __IO uint8_t B44;
+            __IO uint8_t B45;
+            __IO uint8_t B46;
+            __IO uint8_t B47;
+            __IO uint8_t B48;
+            __IO uint8_t B49;
         };
     };
-         uint8_t _RESERVED0_[4096-41];
-    __IO uint32_t W[41];
-         uint32_t _RESERVED1_[1024-41];
+         uint8_t _RESERVED0_[4096-50];
+    __IO uint32_t W[50];
+         uint32_t _RESERVED1_[1024-50];
     union {
         __IO uint32_t DIR[2];
         struct {
@@ -784,6 +795,17 @@ typedef struct {
 
 
 // ------------------------------------------------------------------------------------------------
+// -----                                 SYSCONEXTRA                                          -----
+// ------------------------------------------------------------------------------------------------
+
+typedef struct
+{
+    __I  uint32_t RESERVED000[(0x044-0x000)/4];
+    __IO uint32_t BODCTRL;
+} LPC_SYSCONEXTRA_Type;
+
+
+// ------------------------------------------------------------------------------------------------
 // -----                                        Timer                                       -----
 // ------------------------------------------------------------------------------------------------
 
@@ -1074,6 +1096,27 @@ typedef struct
 
 
 // ------------------------------------------------------------------------------------------------
+// -----                                          USB                                         -----
+// ------------------------------------------------------------------------------------------------
+
+typedef struct {
+    __IO uint32_t DEVCMDSTAT;
+    __IO uint32_t INFO;
+    __IO uint32_t EPLISTSTART;
+    __IO uint32_t DATABUFSTART;
+    __IO uint32_t LPM;
+    __IO uint32_t EPSKIP;
+    __IO uint32_t EPINUSE;
+    __IO uint32_t EPBUFCFG;
+    __IO uint32_t INTSTAT;
+    __IO uint32_t INTEN;
+    __IO uint32_t INTSETSTAT;
+    __I  uint32_t RESERVED02C[(0x034-0x02C)/4];
+    __I  uint32_t EPTOGGLE;
+} LPC_USB_Type;
+
+
+// ------------------------------------------------------------------------------------------------
 // -----                                 Peripheral memory map                                -----
 // ------------------------------------------------------------------------------------------------
 
@@ -1102,6 +1145,7 @@ typedef struct
 #define LPC_UTICK_BASE        (LPC_APB0_BASE + 0x0E000)
 
 /* APB1 peripherals                                                           */
+#define LPC_SYSCONEXTRA_BASE  (LPC_APB1_BASE + 0x00000)
 #define LPC_TIM2_BASE         (LPC_APB1_BASE + 0x08000)
 #define LPC_RTC_BASE          (LPC_APB1_BASE + 0x0C000)
 #define LPC_FLASHCTRL_BASE    (LPC_APB1_BASE + 0x14080)
@@ -1136,7 +1180,7 @@ typedef struct
 // ------------------------------------------------------------------------------------------------
 
 #define LPC_ADC0              ((LPC_ADC_Type            *) LPC_ADC0_BASE     )
-#define LPC_ASYNCSYSCON       ((LPC_ASYNCSYSCON_Type    *) LPC_ASYNCSYSCON_BASE )
+#define LPC_ASYNCSYSCON       ((LPC_ASYNCSYSCON_Type    *) LPC_ASYNCSYSCON_BASE)
 #define LPC_CRC               ((LPC_CRC_Type            *) LPC_CRC_BASE      )
 #define LPC_DMA               ((LPC_DMA_Type            *) LPC_DMA_BASE      )
 #define LPC_DMIC              ((LPC_DMIC_Type           *) LPC_DMIC_BASE     )
@@ -1177,6 +1221,7 @@ typedef struct
 #define LPC_SPI6              ((LPC_SPI_Type            *) LPC_FLEXCOMM6_BASE)
 #define LPC_SPI7              ((LPC_SPI_Type            *) LPC_FLEXCOMM7_BASE)
 #define LPC_SYSCON            ((LPC_SYSCON_Type         *) LPC_SYSCON_BASE   )
+#define LPC_SYSCONEXTRA       ((LPC_SYSCONEXTRA_Type    *) LPC_SYSCONEXTRA_BASE)
 #define LPC_TIMER0            ((LPC_TIMER_Type          *) LPC_TIM0_BASE     )
 #define LPC_TIMER1            ((LPC_TIMER_Type          *) LPC_TIM1_BASE     )
 #define LPC_TIMER2            ((LPC_TIMER_Type          *) LPC_TIM2_BASE     )
@@ -1198,6 +1243,7 @@ typedef struct
 #define LPC_USART5            LPC_UART5
 #define LPC_USART6            LPC_UART6
 #define LPC_USART7            LPC_UART7
+#define LPC_USB0              ((LPC_USB_Type            *) LPC_USB_BASE      )
 #define LPC_UTICK             ((LPC_UTICK_Type          *) LPC_UTICK_BASE    )
 #define LPC_WWDT              ((LPC_WWDT_Type           *) LPC_WWDT_BASE     )
 
