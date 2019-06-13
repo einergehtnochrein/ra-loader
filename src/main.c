@@ -195,8 +195,8 @@ LPCLIB_Result SYS_sendBreak (int durationMilliseconds)
 
 
 
-uint8_t ble2usb[1024];
-uint8_t usb2ble[1024];
+uint8_t ble2usb[2048];
+uint8_t usb2ble[2048];
 
 
 int main (void)
@@ -317,7 +317,7 @@ int main (void)
 
         case 2:
 #if (BOARD_RA == 2)
-            GPIO_writeBit(GPIO_BLE_MODESEL, 1); /* Unselect VSP mode */
+            GPIO_writeBit(GPIO_BLE_MODESEL, 0); /* Unselect VSP mode */
 #endif
             GPIO_writeBit(GPIO_BLE_AUTORUN, 0); /* Command mode (not VSP bridge mode) */
             GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
@@ -360,17 +360,28 @@ int main (void)
         NVIC_EnableIRQ(USB_IRQn);
         USBUSER_open();
 
-        while (1) {
-            int nRead;
+        int nReadUart = 0;
+        int nReadUsb = 0;
+        int nWrittenUart = 0;
 
-            nRead = UART_read(blePort, ble2usb, sizeof(ble2usb));
-            if (nRead > 0) {
-                USBSerial_write(ble2usb, nRead);
+        while (1) {
+            USBSERIAL_worker();
+
+            nReadUart = UART_read(blePort, ble2usb, sizeof(ble2usb));
+            if (nReadUart > 0) {
+                USBSerial_write(ble2usb, nReadUart);
             }
 
-            nRead = USBSerial_read(usb2ble, sizeof(usb2ble));
-            if (nRead > 0) {
-                UART_write(blePort, usb2ble, nRead);
+            if (nReadUsb == 0) {
+                nReadUsb = USBSerial_read(usb2ble, sizeof(usb2ble));
+                nWrittenUart = 0;
+            }
+            if (nReadUsb > 0) {
+                nWrittenUart += UART_write(blePort, &usb2ble[nWrittenUart], nReadUsb);
+                nReadUsb -= nWrittenUart;
+                if (nReadUsb < 0) {
+                    nReadUsb = 0;
+                }
             }
 
             /* Change TX break? */
