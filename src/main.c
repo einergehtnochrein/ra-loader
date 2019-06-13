@@ -54,6 +54,9 @@ static const UART_Config blePortConfig[] = {
     {.opcode = UART_OPCODE_SET_BAUDRATE,
         {.baudrate = 115200,}},
 
+    {.opcode = UART_OPCODE_SET_HARDWARE_HANDSHAKE,
+        {.hardwareHandshake = ENABLE,}},
+
     UART_CONFIG_END
 };
 
