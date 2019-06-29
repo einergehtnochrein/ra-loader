@@ -634,7 +634,7 @@ void UART_ioctl (UART_Handle handle, const UART_Config *pConfig)
                 LPCLIB_BITBAND(&uart->CTL, UART_CTL_TXDIS_Pos) = 1;
                 while (!LPCLIB_BITBAND(&uart->STAT, UART_STAT_TXDISSTAT_Pos))
                     ;
-                
+
                 /* Enter TXD break */
                 LPCLIB_BITBAND(&uart->CTL, UART_CTL_TXBRKEN_Pos) = 1;
 #else
@@ -642,7 +642,7 @@ void UART_ioctl (UART_Handle handle, const UART_Config *pConfig)
                 uart->CTL |= UART_CTL_TXDIS_Msk;
                 while (!(uart->STAT & UART_STAT_TXDISSTAT_Msk))
                     ;
-                
+
                 /* Enter TXD break */
                 uart->CTL |= UART_CTL_TXBRKEN_Msk;
 #endif
