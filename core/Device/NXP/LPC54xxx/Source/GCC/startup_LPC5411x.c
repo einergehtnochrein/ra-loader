@@ -11,6 +11,18 @@ extern uint32_t __stack_end__;
 extern __attribute__((weak)) void __vector_checksum__ (void);
 
 
+/* Default image type is 'legacy' (0) */
+#if !defined(IMAGE_TYPE)
+#  define IMAGE_TYPE    (0)
+#  define _ImageHeader_ (0)
+#endif
+
+/* Image header must be defined externally */
+#if IMAGE_TYPE != 0
+extern void _ImageHeader_ (void);
+#endif
+
+
 /* Default interrupt service routines.
  * Defined as weak symbols. Can be redefined in the application.
  */
@@ -94,8 +106,8 @@ void (*vector_table[])(void) __attribute__ ((section(".vectors"))) =
     UsageFault_Handler,
     __vector_checksum__,
     0,
-    0,
-    0,
+    (void (*)(void))IMAGE_TYPE,
+    (void (*)(void))_ImageHeader_,
     SVC_Handler,
     DebugMon_Handler,
     0,
