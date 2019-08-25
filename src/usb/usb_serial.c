@@ -80,7 +80,7 @@ static ErrorCode_t USBSerial_SetControlLineState (USBD_HANDLE_T hCDC, uint16_t s
     }
 
     //TODO  control AUTORUN pin based on DTR setting
-    GPIO_writeBit(GPIO_BLE_AUTORUN, (state & 0x01) ? 0 : 0);
+    GPIO_writeBit(GPIO_BLE_AUTORUN, (state & 0x01) ? 0 : 1);
 
     /* Any change? */
     if (state ^ handle->controlLineState) {
