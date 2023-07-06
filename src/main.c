@@ -143,31 +143,23 @@ static void handleBleCommunication (void) {
  */
 LPCLIB_Result SYS_send2Host (int channel, const char *message)
 {
-    channel %= 1000;
-
-    /* Get enough space for TX string
-     * 1: '#'
-     * 4: channel number (3 digits max) + comma
-     * 3: comma and checksum (2 digits)
-     * 1: \r
-     * 1: termination
-     */
-    char *s = (char *)malloc(1 + 4 + strlen(message) + 3 + 1 + 1);
-    if (s == NULL) {
-        return LPCLIB_ERROR;
-    }
-
-    sprintf(s, "#%d,%s,", channel, message);
+    char s[20];
     int checksum = 0;
+
+    snprintf(s, sizeof(s), "#%d,", channel);
     for (int i = 0; i < (int)strlen(s); i++) {
         checksum += s[i];
     }
-    checksum %= 100;
-    sprintf(s, "%s%d\r", s, checksum);
-
     UART_write(blePort, s, strlen(s));
 
-    free(s);
+    for (int i = 0; i < (int)strlen(message); i++) {
+        checksum += message[i];
+    }
+    UART_write(blePort, message, strlen(message));
+
+    checksum += ',';
+    snprintf(s, sizeof(s), ",%d\r", checksum % 100);
+    UART_write(blePort, s, strlen(s));
 
     return LPCLIB_SUCCESS;
 }
