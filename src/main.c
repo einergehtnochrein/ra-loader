@@ -6,6 +6,7 @@
 #include "lpclib.h"
 #include "bsp.h"
 #include "app.h"
+#include "bl652.h"
 #include "loader.h"
 #include "validimage.h"
 #include "config.h"
@@ -177,6 +178,7 @@ LPCLIB_Result SYS_sendBreak (int durationMilliseconds)
 
 uint8_t ble2usb[2048];
 uint8_t usb2ble[2048];
+BL652_Handle ble;
 
 
 int main (void)
@@ -253,32 +255,26 @@ int main (void)
     GPIO_writeBit(GPIO_ADF7021_CE, 0);
     GPIO_writeBit(GPIO_LNA_GAIN, 0);
     GPIO_writeBit(GPIO_ENABLE_VDDA, 0);     /* RF part off */
-    /* Set BL652 operating mode depending on selected override. */
-    switch (override) {
-        case 1:
-            GPIO_writeBit(GPIO_BLE_MODESEL, 1); /* Select VSP mode */
-            GPIO_writeBit(GPIO_BLE_AUTORUN, 1); /* VSP bridge mode (not command mode) */
-            GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
-            break;
-
-        case 2:
-            GPIO_writeBit(GPIO_BLE_MODESEL, 0); /* Unselect VSP mode */
-            GPIO_writeBit(GPIO_BLE_AUTORUN, 0); /* Command mode (not VSP bridge mode) */
-            GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
-            break;
-
-        case 3:
-            /* Reserved. Restart CPU */
-            NVIC_SystemReset();
-            while(1);
-    }
 
     UART_open(BLE_UART, &blePort);
     UART_ioctl(blePort, blePortConfig);
 
     NVIC_EnableIRQ(UART3_IRQn);
 
+    if (BL652_open(blePort, GPIO_BLE_AUTORUN, GPIO_BLE_MODESEL, GPIO_BLE_RESET, &ble) == LPCLIB_SUCCESS) {
+        if (BL652_findBaudrate(ble) == LPCLIB_SUCCESS) {
+            if (BL652_readParameters(ble) == LPCLIB_SUCCESS) {
+                if (BL652_updateParameters(ble)) {
+                }
+            }
+        }
+
+        BL652_setMode(ble, BL652_MODE_VSP_BRIDGE);
+    }
+
     if (override == 1) {
+        BL652_setMode(ble, BL652_MODE_VSP_BRIDGE);
+
         LOADER_open(&loaderTask);
         while (1) {
             handleBleCommunication();
@@ -288,6 +284,8 @@ int main (void)
     }
 
     if (override == 2) {
+        BL652_setMode(ble, BL652_MODE_VSP_COMMAND);
+
         CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_USB);
         CLKPWR_unitPowerUp(CLKPWR_UNIT_USBPAD);
 
@@ -334,6 +332,12 @@ int main (void)
                 }
             }
         }
+    }
+
+    if (override == 3) {
+        /* Reserved. Restart CPU */
+        NVIC_SystemReset();
+        while(1);
     }
 }
 
