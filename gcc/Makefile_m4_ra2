@@ -11,7 +11,7 @@ MAKEFILE = Makefile_m4_ra2
 C_SRCS = \
     main.c bsp.c \
     usb/usbuser_config.c usb/usb_serial.c \
-    loader.c validimage.c config.c bl652.c
+    loader.c validimage.c config.c info.c bl652.c
 
 CPP_SRCS =
 
