@@ -6,20 +6,32 @@
 #include "config.h"
 
 __SECTION(".config")
-static const struct _Config_t _factorySettings = {
-    .referenceFrequency = 12.8e6f,
-    .nameBluetooth = "LAIRD BL652",
+static const struct _Config_t _factorySettingsDefault = {
+    .version = 3,
+    .baudrate = 115200.0f,
+
     .usbVID = 0x169C,
     .usbPID = 0x05DC,
     .usbVERSION = 0x0100,
+
+    .referenceFrequency = 12.8e6,
+    .rssiCorrectionLnaOn = -13.0,
+    .rssiCorrectionLnaOff = 16.0,
+
+    .nameBluetooth = "",
     .usbVendorString = L"leckasemmel.de/ra",
     .usbProductString = L"Sondengott Ra",
-    .rssiCorrectionHighGain = -16.0f,
-    .rssiCorrectionLowGain = 13.0f,
+
+    .att_mtu = 23,
+    .att_data_length = 20,
+    .max_packet_length = 27,
 };
 
-const struct _Config_t * CONFIG_getConfig (void)
-{
-    return &_factorySettings;
-}
+__SECTION(".config")
+static volatile const Config_t _factorySettingsUser;
+
+
+/* Pointer to default configuration set at link time */
+const Config_t *config_g = &_factorySettingsDefault;
+
 

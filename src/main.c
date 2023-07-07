@@ -6,12 +6,11 @@
 #include "lpclib.h"
 #include "bsp.h"
 #include "app.h"
+#include "bl652.h"
 #include "loader.h"
 #include "validimage.h"
 #include "config.h"
-#if (BOARD_RA == 2)
-#  include "usbuser_config.h"
-#endif
+#include "usbuser_config.h"
 
 LOADER_Handle loaderTask;
 
@@ -19,12 +18,7 @@ LOADER_Handle loaderTask;
 
 UART_Handle blePort;
 
-#if (BOARD_RA == 1)
-#define BLE_UART                            UART0
-#endif
-#if (BOARD_RA == 2)
 #define BLE_UART                            UART3
-#endif
 #define BLE_PORT_TXBUF_SIZE                 2048
 #define BLE_PORT_RXBUF_SIZE                 2048
 static uint8_t blePortTxBuf[BLE_PORT_TXBUF_SIZE];
@@ -60,7 +54,6 @@ static const UART_Config blePortConfig[] = {
     UART_CONFIG_END
 };
 
-#if (BOARD_RA == 2)
 static const UART_Config blePortConfigBreakEnable[] = {
     {.opcode = UART_OPCODE_SET_BREAK,
         {.enableBreak = LPCLIB_YES, }},
@@ -74,7 +67,6 @@ static const UART_Config blePortConfigBreakDisable[] = {
 
     UART_CONFIG_END
 };
-#endif
 
 
 #define COMMAND_LINE_SIZE   1024
@@ -123,10 +115,7 @@ static void handleBleCommunication (void) {
                             char s[20];
                             sprintf(s, "0,%d,%d",
                                     LOADER_VERSION,
-#if (LOADER_VERSION >= 2) && (BOARD_RA == 1)
-                                    1
-#endif
-#if (LOADER_VERSION >= 2) && (BOARD_RA == 2)
+#if (LOADER_VERSION >= 2)
                                     2
 #endif
                                    );
@@ -155,31 +144,23 @@ static void handleBleCommunication (void) {
  */
 LPCLIB_Result SYS_send2Host (int channel, const char *message)
 {
-    channel %= 1000;
-
-    /* Get enough space for TX string
-     * 1: '#'
-     * 4: channel number (3 digits max) + comma
-     * 3: comma and checksum (2 digits)
-     * 1: \r
-     * 1: termination
-     */
-    char *s = (char *)malloc(1 + 4 + strlen(message) + 3 + 1 + 1);
-    if (s == NULL) {
-        return LPCLIB_ERROR;
-    }
-
-    sprintf(s, "#%d,%s,", channel, message);
+    char s[20];
     int checksum = 0;
+
+    snprintf(s, sizeof(s), "#%d,", channel);
     for (int i = 0; i < (int)strlen(s); i++) {
         checksum += s[i];
     }
-    checksum %= 100;
-    sprintf(s, "%s%d\r", s, checksum);
-
     UART_write(blePort, s, strlen(s));
 
-    free(s);
+    for (int i = 0; i < (int)strlen(message); i++) {
+        checksum += message[i];
+    }
+    UART_write(blePort, message, strlen(message));
+
+    checksum += ',';
+    snprintf(s, sizeof(s), ",%d\r", checksum % 100);
+    UART_write(blePort, s, strlen(s));
 
     return LPCLIB_SUCCESS;
 }
@@ -197,6 +178,7 @@ LPCLIB_Result SYS_sendBreak (int durationMilliseconds)
 
 uint8_t ble2usb[2048];
 uint8_t usb2ble[2048];
+BL652_Handle ble;
 
 
 int main (void)
@@ -225,11 +207,9 @@ int main (void)
     if (GPIO_readBit(GPIO_FORCE_LOADER) == 0) {
         override += 1;
     }
-#if (BOARD_RA == 2)
     if (GPIO_readBit(GPIO_FORCE_LOADER2) == 0) {
         override += 2;
     }
-#endif
 
     executeFirmware = executeFirmware && (override == 0);
 
@@ -253,29 +233,11 @@ int main (void)
 //    pRom->pPwrd->set_voltage(0, 96000000);
 //    CLKPWR_setCpuClock(48000000);
 
-#if (BOARD_RA == 1)
-    CLKPWR_setCpuClock(12000000, CLKPWR_CLOCK_IRC);
-#endif
-#if (BOARD_RA == 2)
     CLKPWR_setCpuClock(12000000, CLKPWR_CLOCK_FRO12);
-#endif
 
-#if (BOARD_RA == 1)
-    /* Prepare system FIFO */
-    LPC_FIFO->FIFOCFGUSART0 = 0x00000404;
-    LPC_FIFO->FIFOUPDATEUSART = 0x000F000F;
-    LPC_FIFO->FIFOCFGSPI0 = 0x00000404;
-    LPC_FIFO->FIFOCFGSPI1 = 0x00000404;
-    LPC_FIFO->FIFOUPDATESPI = 0x00030003;
-//    LPC_SYSCON->FIFOCTRL = 0x00003030;  // SPI0/SPI1 RX/TX
-
-    LPC_ASYNCSYSCON->FRGCTRL = (0 << 8) | (255 << 0);   /* No FRAC, i.e. UART clock = 12 MHz */
-#endif
-#if (BOARD_RA == 2)
     LPC_SYSCON->FRGCTRL = (0 << 8) | (255 << 0);        /* No FRAC, i.e. UART clock = 12 MHz */
 
     LPC_SYSCON->FCLKSEL[3] = 0;                         /* FLEXCOMM3 clock = FRO12M */
-#endif
 
     SystemCoreClock = CLKPWR_getBusClock(CLKPWR_CLOCK_CPU);
 
@@ -284,62 +246,35 @@ int main (void)
 
     GPIO_setDirBit(GPIO_BLE_RESET, ENABLE);
     GPIO_setDirBit(GPIO_BLE_AUTORUN, ENABLE);
-#if (BOARD_RA == 2)
     GPIO_setDirBit(GPIO_BLE_MODESEL, ENABLE);
-#endif
     GPIO_setDirBit(GPIO_ADF7021_CE, ENABLE);
     GPIO_setDirBit(GPIO_ADF7021_SLE, ENABLE);
     GPIO_setDirBit(GPIO_ENABLE_VDDA, ENABLE);
     GPIO_setDirBit(GPIO_LNA_GAIN, ENABLE);
-#if (BOARD_RA == 1)
-    GPIO_setDirBit(GPIO_POWER_SWITCH, DISABLE);
-    GPIO_setDirBit(GPIO_BUTTON, DISABLE);
-    GPIO_setDirBit(GPIO_SSEL_DISP, ENABLE);
-    GPIO_setDirBit(GPIO_ENABLE_DISP, ENABLE);
-#endif
 
     GPIO_writeBit(GPIO_ADF7021_CE, 0);
     GPIO_writeBit(GPIO_LNA_GAIN, 0);
     GPIO_writeBit(GPIO_ENABLE_VDDA, 0);     /* RF part off */
-#if (BOARD_RA == 1)
-    GPIO_writeBit(GPIO_SSEL_DISP, 0);
-#endif
-
-    /* Set BL652 operating mode depending on selected override. */
-    switch (override) {
-        case 1:
-#if (BOARD_RA == 2)
-            GPIO_writeBit(GPIO_BLE_MODESEL, 1); /* Select VSP mode */
-#endif
-            GPIO_writeBit(GPIO_BLE_AUTORUN, 1); /* VSP bridge mode (not command mode) */
-            GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
-            break;
-
-        case 2:
-#if (BOARD_RA == 2)
-            GPIO_writeBit(GPIO_BLE_MODESEL, 0); /* Unselect VSP mode */
-#endif
-            GPIO_writeBit(GPIO_BLE_AUTORUN, 0); /* Command mode (not VSP bridge mode) */
-            GPIO_writeBit(GPIO_BLE_RESET, 1);   /* Release BL652 reset */
-            break;
-
-        case 3:
-            /* Reserved. Restart CPU */
-            NVIC_SystemReset();
-            while(1);
-    }
 
     UART_open(BLE_UART, &blePort);
     UART_ioctl(blePort, blePortConfig);
 
-#if (BOARD_RA == 1)
-    NVIC_EnableIRQ(UART0_IRQn);
-#endif
-#if (BOARD_RA == 2)
     NVIC_EnableIRQ(UART3_IRQn);
-#endif
+
+    if (BL652_open(blePort, GPIO_BLE_AUTORUN, GPIO_BLE_MODESEL, GPIO_BLE_RESET, &ble) == LPCLIB_SUCCESS) {
+        if (BL652_findBaudrate(ble) == LPCLIB_SUCCESS) {
+            if (BL652_readParameters(ble) == LPCLIB_SUCCESS) {
+                if (BL652_updateParameters(ble)) {
+                }
+            }
+        }
+
+        BL652_setMode(ble, BL652_MODE_VSP_BRIDGE);
+    }
 
     if (override == 1) {
+        BL652_setMode(ble, BL652_MODE_VSP_BRIDGE);
+
         LOADER_open(&loaderTask);
         while (1) {
             handleBleCommunication();
@@ -348,8 +283,9 @@ int main (void)
         }
     }
 
-#if (BOARD_RA == 2)
     if (override == 2) {
+        BL652_setMode(ble, BL652_MODE_VSP_COMMAND);
+
         CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_USB);
         CLKPWR_unitPowerUp(CLKPWR_UNIT_USBPAD);
 
@@ -397,7 +333,12 @@ int main (void)
             }
         }
     }
-#endif
+
+    if (override == 3) {
+        /* Reserved. Restart CPU */
+        NVIC_SystemReset();
+        while(1);
+    }
 }
 
 
@@ -405,26 +346,11 @@ void SystemInit (void)
 {
     BSP_systemInit();
 
-#if (BOARD_RA == 1)
-    /* Enable Asynchronous APB bus */
-    LPC_SYSCON->ASYNCAPBCTRL = 1;           /* on */
-    LPC_ASYNCSYSCON->ASYNCCLKDIV = 1;       /* Don't divide */
-    LPC_ASYNCSYSCON->ASYNCAPBCLKSELA = 0;   /* IRC */
-    LPC_ASYNCSYSCON->ASYNCAPBCLKSELB = 3;   /* Use CLKSELA */
-
-    CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_FIFO);
-    CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_FRG0);
-    CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_SRAM1);
-    CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_SRAM2);
-#endif
-
-#if (BOARD_RA == 2)
     /* Enable Asynchronous APB bus */
     LPC_SYSCON->ASYNCAPBCTRL = 1;           /* on */
     LPC_ASYNCSYSCON->ASYNCAPBCLKSELA = 0;   /* Main clock */
 
     CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_SRAM1);
     CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_SRAM2);
-#endif
 }
 

@@ -1,7 +1,8 @@
 /* Describe the available memory blocks */
 MEMORY
 {
-    flash           : ORIGIN = 0x00000000, LENGTH = 32K
+    flash           : ORIGIN = 0x00000000, LENGTH = 32K-256
+    info            : ORIGIN = 0x00007F00, LENGTH = 256
     config          : ORIGIN = 0x00038000, LENGTH = 1K
 
     sram0           : ORIGIN = 0x20000000, LENGTH = 64K
@@ -108,6 +109,11 @@ SECTIONS
     {
         KEEP(*(.config))
     } >config
+
+    .info :
+    {
+        KEEP(*(.info))
+    } >info
 
     /* The scatter table defines sections to be initialized by the startup code.
      * An entry starts with one of these 32-bit words:
