@@ -4,7 +4,7 @@
 #include "bsp.h"
 #include "loader.h"
 
-#define LOADER_VERSION                      4
+#define LOADER_VERSION                      5
 
 #define HOST_CHANNEL_PING                   0
 #define HOST_CHANNEL_GUI                    3
