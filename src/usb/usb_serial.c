@@ -282,6 +282,79 @@ int USBSerial_read (void *message, int maxLen)
 }
 
 
+/* Read a complete line (terminated by either CR or LF). */
+int USBSERIAL_readLine (void *buffer, int nbytes)
+{
+    struct _USBSerial_Context *handle = &usbSerialContext;
+    int nread = 0;
+    int ri = handle->rxReadIndex;
+    bool lineComplete = false;
+    bool overflow = false;
+
+    if (!USBUSER_isConfigured()) {
+        return 0;
+    }
+
+    /* Verify buffer has enough room */
+    if (nbytes < 1) {
+        return 0;
+    }
+
+    /* Loop over all characters in RX FIFO, until either all characters are consumed
+     * or an end-of-line marker is found.
+     */
+    while (ri != handle->rxWriteIndex) {
+        char c = handle->pRxBuffer[ri];
+
+        ++ri;
+        if (ri >= handle->rxBufferSize) {
+            ri = 0;
+        }
+
+        /* Store in buffer (if room left) */
+        if (nbytes > 1) {   /* We need room for terminating 0! */
+            ((uint8_t *)buffer)[nread] = c;
+            --nbytes;
+            ++nread;
+        }
+        else {
+            overflow = true;
+        }
+
+        /* Line end? */
+        if ((c == '\n') || (c == '\r')) {
+            lineComplete = true;
+
+            /* Terminate string */
+            ((uint8_t *)buffer)[nread] = 0;
+
+            /* Remove characters from RX buffer */
+            handle->rxReadIndex = ri;
+
+            if (overflow) {
+                nread = -1;
+            }
+            break;
+        }
+    }
+
+    /* RX FIFO full without EOL character? */
+    if (nread + 1 >= handle->rxBufferSize) {
+        /* Overflow error (line too long) */
+        nread = -1;
+
+        /* Remove characters from RX buffer */
+        handle->rxReadIndex = ri;
+        lineComplete = true;
+    }
+
+    if (!lineComplete) {
+        nread = 0;
+    }
+
+    return nread;
+}
+
 
 void USBSerial_write (const void *message, int len)
 {
