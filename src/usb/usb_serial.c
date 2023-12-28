@@ -72,7 +72,6 @@ struct _USBSerial_Context {
 static ErrorCode_t USBSerial_SetControlLineState (USBD_HANDLE_T hCDC, uint16_t state)
 {
     struct _USBSerial_Context *handle = &usbSerialContext;
-//    int count;
 
 
     if (hCDC != handle->hCdc) {
@@ -96,7 +95,7 @@ static ErrorCode_t USBSerial_SetControlLineState (USBD_HANDLE_T hCDC, uint16_t s
         handle->notification.header.bRequest = CDC_NOTIFICATION_SERIAL_STATE;
         handle->notification.header.wIndex.W = handle->cif_if;
         handle->notification.header.wLength = sizeof(handle->notification.payload);
-        /*count =*/ pRom->pUsbd->hw->WriteEP(handle->hUsb, handle->int_ep, (uint8_t *)&handle->notification, sizeof(handle->notification));
+        pRom->pUsbd->hw->WriteEP(handle->hUsb, handle->int_ep, (uint8_t *)&handle->notification, sizeof(handle->notification));
     }
 
     return LPC_OK;
