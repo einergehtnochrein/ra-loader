@@ -294,7 +294,7 @@ int main (void)
         LPC_SYSCON->FROCTRL |= (1u << 24) | (1u << 30);     /* USBCLKADJ=1, enable FROHF */
 
         NVIC_EnableIRQ(USB_IRQn);
-        USBUSER_open();
+        USBUSER_open(true);                                 /* "true" = Enable bridge to BLE UART */
 
         int nReadUart = 0;
         int nReadUsb = 0;
