@@ -72,6 +72,17 @@ static const UART_Config blePortConfigBreakDisable[] = {
 #define COMMAND_LINE_SIZE   1024
 char commandLine[COMMAND_LINE_SIZE];
 
+
+static int _getRaVersion (void)
+{
+    int version = 2;
+
+    if (GPIO_readBit(GPIO_0_19) == 0) {     /* Board Ra2fix */
+        version = 3;
+    }
+}
+
+
 static void handleBleCommunication (void) {
     if (UART_readLine(blePort, commandLine, sizeof(commandLine)) > 0) {
         /* Valid command line starts with hash ('#') and a channel number.
@@ -115,9 +126,7 @@ static void handleBleCommunication (void) {
                             char s[20];
                             sprintf(s, "0,%d,%d",
                                     LOADER_VERSION,
-#if (LOADER_VERSION >= 2)
-                                    2
-#endif
+                                    _getRaVersion()
                                    );
                             SYS_send2Host(HOST_CHANNEL_PING, s);
                         }
