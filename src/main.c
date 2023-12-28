@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "lpclib.h"
 #include "bsp.h"
@@ -17,6 +18,10 @@ LOADER_Handle loaderTask;
 //char s[100];
 
 UART_Handle blePort;
+
+uint8_t ble2usb[2048];
+uint8_t usb2ble[2048];
+BL652_Handle ble;
 
 #define BLE_UART                            UART3
 #define BLE_PORT_TXBUF_SIZE                 2048
@@ -80,11 +85,20 @@ static int _getRaVersion (void)
     if (GPIO_readBit(GPIO_0_19) == 0) {     /* Board Ra2fix */
         version = 3;
     }
+
+    return version;
 }
 
 
 static void handleBleCommunication (void) {
+    bool haveData = false;
     if (UART_readLine(blePort, commandLine, sizeof(commandLine)) > 0) {
+        haveData = true;
+    } else if (USBSERIAL_readLine(commandLine, sizeof(commandLine)) > 0) {
+        haveData = true;
+    }
+
+    if (haveData) {
         /* Valid command line starts with hash ('#') and a channel number.
          * Optional arguments are separated by commas.
          * A command line ends with a comma and a checksum
@@ -123,10 +137,13 @@ static void handleBleCommunication (void) {
                     case HOST_CHANNEL_PING:
                         {
                             /* Send status: loader mode */
-                            char s[20];
-                            sprintf(s, "0,%d,%d",
+                            uint32_t bleFirmwareVersion;
+                            BL652_getFirmwareVersion(ble, &bleFirmwareVersion);
+                            char s[40];
+                            snprintf(s, sizeof(s), "0,%d,%d,0,,,%"PRIu32,
                                     LOADER_VERSION,
-                                    _getRaVersion()
+                                    _getRaVersion(),
+                                    bleFirmwareVersion
                                    );
                             SYS_send2Host(HOST_CHANNEL_PING, s);
                         }
@@ -182,12 +199,6 @@ LPCLIB_Result SYS_sendBreak (int durationMilliseconds)
 
     return LPCLIB_SUCCESS;
 }
-
-
-
-uint8_t ble2usb[2048];
-uint8_t usb2ble[2048];
-BL652_Handle ble;
 
 
 int main (void)
