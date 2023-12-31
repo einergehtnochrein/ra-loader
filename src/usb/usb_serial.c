@@ -65,6 +65,8 @@ struct _USBSerial_Context {
         CDC_NOTIFICATION_HEADER header;
         uint16_t payload;
     } notification;
+
+    USBSERIAL_setLineCodeHandler setLineCodeHandler;
 } usbSerialContext;
 
 
@@ -72,7 +74,6 @@ struct _USBSerial_Context {
 static ErrorCode_t USBSerial_SetControlLineState (USBD_HANDLE_T hCDC, uint16_t state)
 {
     struct _USBSerial_Context *handle = &usbSerialContext;
-//    int count;
 
 
     if (hCDC != handle->hCdc) {
@@ -96,7 +97,7 @@ static ErrorCode_t USBSerial_SetControlLineState (USBD_HANDLE_T hCDC, uint16_t s
         handle->notification.header.bRequest = CDC_NOTIFICATION_SERIAL_STATE;
         handle->notification.header.wIndex.W = handle->cif_if;
         handle->notification.header.wLength = sizeof(handle->notification.payload);
-        /*count =*/ pRom->pUsbd->hw->WriteEP(handle->hUsb, handle->int_ep, (uint8_t *)&handle->notification, sizeof(handle->notification));
+        pRom->pUsbd->hw->WriteEP(handle->hUsb, handle->int_ep, (uint8_t *)&handle->notification, sizeof(handle->notification));
     }
 
     return LPC_OK;
@@ -120,78 +121,24 @@ static ErrorCode_t USBSerial_SendBreak (USBD_HANDLE_T hCDC, uint16_t mstime)
 
 
 
-static UART_Config _uartConfig[] = {
-    {.opcode = UART_OPCODE_SET_ASYNC_FORMAT,
-        {.asyncFormat = {
-            .databits = UART_DATABITS_8,
-            .stopbits = UART_STOPBITS_1,
-            .parity = UART_PARITY_NONE,}}},
-
-    {.opcode = UART_OPCODE_SET_BAUDRATE,
-        {.baudrate = 115200,}},
-
-    UART_CONFIG_END
-};
-
-
-
 /* Set line coding call back routine */
 static ErrorCode_t USBSerial_SetLineCode(USBD_HANDLE_T hCDC, CDC_LINE_CODING *line_coding)
 {
     (void)hCDC;
 
-    switch (line_coding->bDataBits) {
-    case 7:
-        _uartConfig[0].asyncFormat.databits = UART_DATABITS_7;
-        break;
-    case 8:
-    default:
-        _uartConfig[0].asyncFormat.databits = UART_DATABITS_8;
-        break;
+    int stopBits = 1;
+    if (line_coding->bCharFormat == 2) {
+        stopBits = 2;
     }
 
-    switch (line_coding->bCharFormat) {
-    case 1: /* 1.5 Stop Bits not supported */
-        return ERR_USBD_INVALID_REQ;
-
-    case 2: /* 2 Stop Bits */
-        _uartConfig[0].asyncFormat.stopbits = UART_STOPBITS_2;
-        break;
-
-    default:
-    case 0: /* 1 Stop Bit */
-        _uartConfig[0].asyncFormat.stopbits = UART_STOPBITS_1;
-        break;
+    if (usbSerialContext.setLineCodeHandler) {
+        usbSerialContext.setLineCodeHandler(
+            line_coding->bDataBits,
+            stopBits,
+            line_coding->bParityType,
+            line_coding->dwDTERate
+        );
     }
-
-    switch (line_coding->bParityType) {
-    case 1:
-        _uartConfig[0].asyncFormat.parity = UART_PARITY_ODD;
-        break;
-
-    case 2:
-        _uartConfig[0].asyncFormat.parity = UART_PARITY_EVEN;
-        break;
-
-    case 3:
-        break;
-
-    case 4:
-        break;
-
-    default:
-    case 0:
-        _uartConfig[0].asyncFormat.parity = UART_PARITY_NONE;
-        break;
-    }
-
-    if (line_coding->dwDTERate < 3125000) {
-        _uartConfig[1].baudrate = line_coding->dwDTERate;
-    }
-
-//TODO don't do this in interrupt...
-extern UART_Handle blePort;
-UART_ioctl(blePort, _uartConfig);
 
     return LPC_OK;
 }
@@ -253,6 +200,7 @@ ErrorCode_t USBSerial_init(USBD_HANDLE_T hUsb,
     }
 
     handle->hUsb = hUsb;
+    handle->setLineCodeHandler = NULL;
 
     /* Init CDC params */
     memset((void *) &cdcParam, 0, sizeof(cdcParam));
@@ -334,6 +282,79 @@ int USBSerial_read (void *message, int maxLen)
 }
 
 
+/* Read a complete line (terminated by either CR or LF). */
+int USBSERIAL_readLine (void *buffer, int nbytes)
+{
+    struct _USBSerial_Context *handle = &usbSerialContext;
+    int nread = 0;
+    int ri = handle->rxReadIndex;
+    bool lineComplete = false;
+    bool overflow = false;
+
+    if (!USBUSER_isConfigured()) {
+        return 0;
+    }
+
+    /* Verify buffer has enough room */
+    if (nbytes < 1) {
+        return 0;
+    }
+
+    /* Loop over all characters in RX FIFO, until either all characters are consumed
+     * or an end-of-line marker is found.
+     */
+    while (ri != handle->rxWriteIndex) {
+        char c = handle->pRxBuffer[ri];
+
+        ++ri;
+        if (ri >= handle->rxBufferSize) {
+            ri = 0;
+        }
+
+        /* Store in buffer (if room left) */
+        if (nbytes > 1) {   /* We need room for terminating 0! */
+            ((uint8_t *)buffer)[nread] = c;
+            --nbytes;
+            ++nread;
+        }
+        else {
+            overflow = true;
+        }
+
+        /* Line end? */
+        if ((c == '\n') || (c == '\r')) {
+            lineComplete = true;
+
+            /* Terminate string */
+            ((uint8_t *)buffer)[nread] = 0;
+
+            /* Remove characters from RX buffer */
+            handle->rxReadIndex = ri;
+
+            if (overflow) {
+                nread = -1;
+            }
+            break;
+        }
+    }
+
+    /* RX FIFO full without EOL character? */
+    if (nread + 1 >= handle->rxBufferSize) {
+        /* Overflow error (line too long) */
+        nread = -1;
+
+        /* Remove characters from RX buffer */
+        handle->rxReadIndex = ri;
+        lineComplete = true;
+    }
+
+    if (!lineComplete) {
+        nread = 0;
+    }
+
+    return nread;
+}
+
 
 void USBSerial_write (const void *message, int len)
 {
@@ -381,6 +402,12 @@ void USBSerial_write (const void *message, int len)
             handle->txPendingIndex = (handle->txReadIndex + count) % handle->txBufferSize;
         }
     }
+}
+
+
+void USBSERIAL_installSetLineCodeHandler(USBSERIAL_setLineCodeHandler handler)
+{
+    usbSerialContext.setLineCodeHandler = handler;
 }
 
 

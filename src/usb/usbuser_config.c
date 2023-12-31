@@ -55,7 +55,45 @@ static ErrorCode_t _USBUSER_handleConfigureEvent (USBD_HANDLE_T hUsb)
 }
 
 
-void USBUSER_open (void)
+static UART_Config _uartConfig[] = {
+    {.opcode = UART_OPCODE_SET_ASYNC_FORMAT,
+        {.asyncFormat = {
+            .databits = UART_DATABITS_8,
+            .stopbits = UART_STOPBITS_1,
+            .parity = UART_PARITY_NONE,}}},
+
+    {.opcode = UART_OPCODE_SET_BAUDRATE,
+        {.baudrate = 115200,}},
+
+    UART_CONFIG_END
+};
+
+
+/* Set line coding call back routine */
+static void USBUSER_serialSetLineCode(
+    int dataBits,
+    int stopBits,
+    int parity,
+    int baudrate
+)
+{
+    _uartConfig[0].asyncFormat.databits = (dataBits == 8) ? UART_DATABITS_8 : UART_DATABITS_7;
+    _uartConfig[0].asyncFormat.stopbits = (stopBits == 2) ? UART_STOPBITS_2 : UART_STOPBITS_1;
+    _uartConfig[0].asyncFormat.parity = UART_PARITY_NONE;
+    if (parity == 1) {
+        _uartConfig[0].asyncFormat.parity = UART_PARITY_ODD;
+    }
+    if (parity == 2) {
+        _uartConfig[0].asyncFormat.parity = UART_PARITY_EVEN;
+    }
+    _uartConfig[1].baudrate = baudrate;
+
+extern UART_Handle blePort;
+UART_ioctl(blePort, _uartConfig);
+}
+
+
+void USBUSER_open (_Bool uartBridge)
 {
     struct _USBContext *handle = &usbContext;
     ErrorCode_t ret = LPC_OK;
@@ -72,7 +110,9 @@ void USBUSER_open (void)
 
     /* Set the USB descriptors */
     handle->desc.device_desc = (uint8_t *) &appDeviceDescriptor;
-    handle->desc.string_desc = (uint8_t *) &theUSB_StringDescriptor;
+    handle->desc.string_desc = uartBridge ?
+            (uint8_t *) &bl652Bridge_StringDescriptor
+          : (uint8_t *) &noBridge_StringDescriptor;
 
     /* Note, to pass USBCV test full-speed only devices should have both
      * descriptor arrays point to same location and device_qualifier set
@@ -93,11 +133,12 @@ void USBUSER_open (void)
                     &handle->param.mem_size);
 
         if (ret == LPC_OK) {
-
-            if (ret == LPC_OK) {
-                /* now connect */
-                handle->pUsbApi->hw->Connect(handle->hUsb, 1);
+            if (uartBridge) {
+                USBSERIAL_installSetLineCodeHandler(USBUSER_serialSetLineCode);
             }
+
+            /* now connect */
+            handle->pUsbApi->hw->Connect(handle->hUsb, 1);
         }
     }
 }

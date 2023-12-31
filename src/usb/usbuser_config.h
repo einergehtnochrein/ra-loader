@@ -60,7 +60,7 @@
 #define USBCONFIG_MAX_NUM_EP                            5
 
 void USBUSER_initDescriptors (void);
-void USBUSER_open (void);
+void USBUSER_open (_Bool uartBridge);
 void USBUSER_worker (void);
 bool USBUSER_isConfigured (void);
 

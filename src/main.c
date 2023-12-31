@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "lpclib.h"
 #include "bsp.h"
@@ -17,6 +18,10 @@ LOADER_Handle loaderTask;
 //char s[100];
 
 UART_Handle blePort;
+
+uint8_t ble2usb[2048];
+uint8_t usb2ble[2048];
+BL652_Handle ble;
 
 #define BLE_UART                            UART3
 #define BLE_PORT_TXBUF_SIZE                 2048
@@ -72,8 +77,28 @@ static const UART_Config blePortConfigBreakDisable[] = {
 #define COMMAND_LINE_SIZE   1024
 char commandLine[COMMAND_LINE_SIZE];
 
+
+static int _getRaVersion (void)
+{
+    int version = 2;
+
+    if (GPIO_readBit(GPIO_0_19) == 0) {     /* Board Ra2fix */
+        version = 3;
+    }
+
+    return version;
+}
+
+
 static void handleBleCommunication (void) {
+    bool haveData = false;
     if (UART_readLine(blePort, commandLine, sizeof(commandLine)) > 0) {
+        haveData = true;
+    } else if (USBSERIAL_readLine(commandLine, sizeof(commandLine)) > 0) {
+        haveData = true;
+    }
+
+    if (haveData) {
         /* Valid command line starts with hash ('#') and a channel number.
          * Optional arguments are separated by commas.
          * A command line ends with a comma and a checksum
@@ -112,12 +137,13 @@ static void handleBleCommunication (void) {
                     case HOST_CHANNEL_PING:
                         {
                             /* Send status: loader mode */
-                            char s[20];
-                            sprintf(s, "0,%d,%d",
+                            uint32_t bleFirmwareVersion;
+                            BL652_getFirmwareVersion(ble, &bleFirmwareVersion);
+                            char s[40];
+                            snprintf(s, sizeof(s), "0,%d,%d,0,,,%"PRIu32,
                                     LOADER_VERSION,
-#if (LOADER_VERSION >= 2)
-                                    2
-#endif
+                                    _getRaVersion(),
+                                    bleFirmwareVersion
                                    );
                             SYS_send2Host(HOST_CHANNEL_PING, s);
                         }
@@ -125,6 +151,14 @@ static void handleBleCommunication (void) {
 
                     case HOST_CHANNEL_FIRMWAREUPDATE:
                         {
+                            LOADER_setMode(loaderTask, LOADER_MODE_FIRMWARE);
+                            LOADER_processCommand(loaderTask, &commandLine[1]);
+                        }
+                        break;
+
+                    case HOST_CHANNEL_CONFIGUPDATE:
+                        {
+                            LOADER_setMode(loaderTask, LOADER_MODE_CONFIG);
                             LOADER_processCommand(loaderTask, &commandLine[1]);
                         }
                         break;
@@ -152,15 +186,18 @@ LPCLIB_Result SYS_send2Host (int channel, const char *message)
         checksum += s[i];
     }
     UART_write(blePort, s, strlen(s));
+    USBSerial_write(s, strlen(s));
 
     for (int i = 0; i < (int)strlen(message); i++) {
         checksum += message[i];
     }
     UART_write(blePort, message, strlen(message));
+    USBSerial_write(message, strlen(message));
 
     checksum += ',';
     snprintf(s, sizeof(s), ",%d\r", checksum % 100);
     UART_write(blePort, s, strlen(s));
+    USBSerial_write(s, strlen(s));
 
     return LPCLIB_SUCCESS;
 }
@@ -173,12 +210,6 @@ LPCLIB_Result SYS_sendBreak (int durationMilliseconds)
 
     return LPCLIB_SUCCESS;
 }
-
-
-
-uint8_t ble2usb[2048];
-uint8_t usb2ble[2048];
-BL652_Handle ble;
 
 
 int main (void)
@@ -275,9 +306,20 @@ int main (void)
     if (override == 1) {
         BL652_setMode(ble, BL652_MODE_VSP_BRIDGE);
 
+        CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_USB);
+        CLKPWR_unitPowerUp(CLKPWR_UNIT_USBPAD);
+
+        LPC_SYSCON->USBCLKSEL = 0;                          /* USB clock = FROHF */
+        LPC_SYSCON->USBCLKDIV = 0;                          /* USB clock divider = 1 (FROHF = 48 MHz) */
+        LPC_SYSCON->FROCTRL |= (1u << 24) | (1u << 30);     /* USBCLKADJ=1, enable FROHF */
+
+        NVIC_EnableIRQ(USB_IRQn);
+        USBUSER_open(false);                                /* "false" = no bridge to BLE UART */
+
         LOADER_open(&loaderTask);
         while (1) {
             handleBleCommunication();
+            USBSERIAL_worker();
             LOADER_thread(loaderTask);
             __WFI();
         }
@@ -294,7 +336,7 @@ int main (void)
         LPC_SYSCON->FROCTRL |= (1u << 24) | (1u << 30);     /* USBCLKADJ=1, enable FROHF */
 
         NVIC_EnableIRQ(USB_IRQn);
-        USBUSER_open();
+        USBUSER_open(true);                                 /* "true" = Enable bridge to BLE UART */
 
         int nReadUart = 0;
         int nReadUsb = 0;

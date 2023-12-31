@@ -107,6 +107,7 @@ SECTIONS
 
     .config (NOLOAD) :
     {
+        __CONFIG_ADDRESS__ = .;
         KEEP(*(.config))
     } >config
 
