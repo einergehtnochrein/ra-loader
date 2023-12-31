@@ -151,6 +151,14 @@ static void handleBleCommunication (void) {
 
                     case HOST_CHANNEL_FIRMWAREUPDATE:
                         {
+                            LOADER_setMode(loaderTask, LOADER_MODE_FIRMWARE);
+                            LOADER_processCommand(loaderTask, &commandLine[1]);
+                        }
+                        break;
+
+                    case HOST_CHANNEL_CONFIGUPDATE:
+                        {
+                            LOADER_setMode(loaderTask, LOADER_MODE_CONFIG);
                             LOADER_processCommand(loaderTask, &commandLine[1]);
                         }
                         break;
@@ -178,15 +186,18 @@ LPCLIB_Result SYS_send2Host (int channel, const char *message)
         checksum += s[i];
     }
     UART_write(blePort, s, strlen(s));
+    USBSerial_write(s, strlen(s));
 
     for (int i = 0; i < (int)strlen(message); i++) {
         checksum += message[i];
     }
     UART_write(blePort, message, strlen(message));
+    USBSerial_write(message, strlen(message));
 
     checksum += ',';
     snprintf(s, sizeof(s), ",%d\r", checksum % 100);
     UART_write(blePort, s, strlen(s));
+    USBSerial_write(s, strlen(s));
 
     return LPCLIB_SUCCESS;
 }
@@ -295,9 +306,20 @@ int main (void)
     if (override == 1) {
         BL652_setMode(ble, BL652_MODE_VSP_BRIDGE);
 
+        CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_USB);
+        CLKPWR_unitPowerUp(CLKPWR_UNIT_USBPAD);
+
+        LPC_SYSCON->USBCLKSEL = 0;                          /* USB clock = FROHF */
+        LPC_SYSCON->USBCLKDIV = 0;                          /* USB clock divider = 1 (FROHF = 48 MHz) */
+        LPC_SYSCON->FROCTRL |= (1u << 24) | (1u << 30);     /* USBCLKADJ=1, enable FROHF */
+
+        NVIC_EnableIRQ(USB_IRQn);
+        USBUSER_open(false);                                /* "false" = no bridge to BLE UART */
+
         LOADER_open(&loaderTask);
         while (1) {
             handleBleCommunication();
+            USBSERIAL_worker();
             LOADER_thread(loaderTask);
             __WFI();
         }

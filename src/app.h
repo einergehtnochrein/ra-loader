@@ -9,6 +9,7 @@
 #define HOST_CHANNEL_PING                   0
 #define HOST_CHANNEL_GUI                    3
 #define HOST_CHANNEL_FIRMWAREUPDATE         9
+#define HOST_CHANNEL_CONFIGUPDATE           10
 
 extern LOADER_Handle loaderTask;
 

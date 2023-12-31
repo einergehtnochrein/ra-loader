@@ -52,10 +52,20 @@ enum {
 
 /* !!! Be careful not to add a comma after the last entry !!! */
 static const DECLARE_USBD_STRINGS (
-    theUSB_StringDescriptor,
+    bl652Bridge_StringDescriptor,
     0x0409,
     L"github.com/einergehtnochrein/ra-hardware",
     L"Ra2 BL652 Bridge",
+
+    L"IAD",
+    L"CIF",
+    L"DIF"
+);
+static const DECLARE_USBD_STRINGS (
+    noBridge_StringDescriptor,
+    0x0409,
+    L"github.com/einergehtnochrein/ra-hardware",
+    L"Ra2 Configurator",
 
     L"IAD",
     L"CIF",

@@ -24,12 +24,14 @@
  */
 
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "lpclib.h"
 #include "bsp.h"
 
+#include "config.h"
 #include "validimage.h"
 #include "loader.h"
 
@@ -40,6 +42,7 @@
 
 #define LOADER_TIMERMAGIC_RESTART       1
 
+extern uint32_t __CONFIG_ADDRESS__;     /* Defined by linker script. Start of config section. */
 
 typedef struct {
     uint8_t opcode;
@@ -84,10 +87,14 @@ struct LOADER_Context {
     CRC_Handle crc;
     uint32_t segment;
     LOADER_State state;
+    LOADER_Mode mode;
 
     uint16_t currentPage;
     bool pageDirty;
     uint8_t page[256] __ALIGN(4);
+
+    uint32_t configOffset;
+    Config_t config;
 
     bool terminate;
 } loaderContext;
@@ -99,17 +106,44 @@ LPCLIB_Result LOADER_open (LOADER_Handle *pHandle)
 {
     *pHandle = &loaderContext;
 
+    loaderContext.state = LOADER_STATE_IDLE;
+    loaderContext.mode = LOADER_MODE_FIRMWARE;
+
     return LPCLIB_SUCCESS;
 }
 
 
-
-
-static void _LOADER_sendResponse (int action, const char *status)
+LPCLIB_Result LOADER_setMode (LOADER_Handle handle, LOADER_Mode mode)
 {
-    char s[20];
-    sprintf(s, "%d,%s", action, status);
-    SYS_send2Host(HOST_CHANNEL_FIRMWAREUPDATE, s);
+    if (handle == LPCLIB_INVALID_HANDLE) {
+        return LPCLIB_ILLEGAL_PARAMETER;
+    }
+
+    switch (mode) {
+        case LOADER_MODE_FIRMWARE:
+        case LOADER_MODE_CONFIG:
+            /* Reset loader state when mode changes */
+            if (mode != handle->mode) {
+                handle->state = LOADER_STATE_IDLE;
+            }
+            handle->mode = mode;
+            break;
+
+        default:
+            return LPCLIB_ILLEGAL_PARAMETER;
+    }
+
+    return LPCLIB_SUCCESS;
+}
+
+
+static void _LOADER_sendResponse (LOADER_Handle handle, int action, const char *status)
+{
+    static char s[512];
+    snprintf(s, sizeof(s), "%d,%s", action, status);
+    SYS_send2Host(
+        handle->mode == LOADER_MODE_FIRMWARE ? HOST_CHANNEL_FIRMWAREUPDATE : HOST_CHANNEL_CONFIGUPDATE,
+        s);
 }
 
 
@@ -163,34 +197,52 @@ static LPCLIB_Result _LOADER_flushPage (LOADER_Handle handle)
     }
     handle->pageDirty = false;
 
-    address = 256 * handle->currentPage;  //TODO
-    if (address < FIRMWARE_START_ADDRESS) {
-        return LPCLIB_ERROR;    // Trying to write to loader sector is an error
-    }
-    if (address >= FIRMWARE_END_ADDRESS) {
-        return LPCLIB_SUCCESS;  // Trying to write beyond image address range is accepted
-    }
+    if (handle->mode == LOADER_MODE_FIRMWARE) {
+        /* In firmware update mode data is written to flash */
+        address = 256 * handle->currentPage;  //TODO
+        if (address < FIRMWARE_START_ADDRESS) {
+            return LPCLIB_ERROR;    // Trying to write to loader sector is an error
+        }
+        if (address >= FIRMWARE_END_ADDRESS) {
+            return LPCLIB_SUCCESS;  // Trying to write beyond image address range is accepted
+        }
 
-    __disable_irq();
+        __disable_irq();
 
-    IAP_address2SectorNumber(address, &sectorNumber, NULL);
-    IAP_address2PageNumber(address, &pageNumber, NULL);
+        IAP_address2SectorNumber(address, &sectorNumber, NULL);
+        IAP_address2PageNumber(address, &pageNumber, NULL);
 
-    iapResult = IAP_prepareSectorsForWriteOperation(
-            sectorNumber,
-            sectorNumber,
-            NULL);
-    if (iapResult == LPCLIB_SUCCESS) {
-        iapResult = IAP_copyRamToFlash(
-                address,
-                (uint32_t)&handle->page,
-                256,
+        iapResult = IAP_prepareSectorsForWriteOperation(
+                sectorNumber,
+                sectorNumber,
                 NULL);
+        if (iapResult == LPCLIB_SUCCESS) {
+            iapResult = IAP_copyRamToFlash(
+                    address,
+                    (uint32_t)&handle->page,
+                    256,
+                    NULL);
+        }
+
+        __enable_irq();
+
+        return iapResult;
     }
 
-    __enable_irq();
+    if (handle->mode == LOADER_MODE_CONFIG) {
+        /* In config mode data is saved to RAM copy */
+        address = 256 * handle->currentPage;
+        if (address >= sizeof(Config_t)) {
+            return LPCLIB_ERROR;
+        }
 
-    return iapResult;
+        uint8_t *p = (uint8_t *)&handle->config;
+        memcpy(&p[address], handle->page, 256);
+
+        return LPCLIB_SUCCESS;
+    }
+
+    return LPCLIB_ERROR;
 }
 
 
@@ -217,6 +269,11 @@ static LPCLIB_Result _LOADER_processHexRecord (LOADER_Handle handle, const char 
             if (sscanf(record, ":%*2X%*4X%*2X%4X", &val) == 1) {
                 handle->segment = val;
                 result = LPCLIB_SUCCESS;
+            }
+
+            /* Only firmware update uses segments */
+            if (handle->mode == LOADER_MODE_CONFIG) {
+                handle->segment = 0;
             }
         }
 
@@ -270,14 +327,15 @@ static LPCLIB_Result _LOADER_processHexRecord (LOADER_Handle handle, const char 
 
 LPCLIB_Result LOADER_processCommand (LOADER_Handle handle, const char *commandLine)
 {
+    LPCLIB_Result result = LPCLIB_SUCCESS;
     const char *response = LOADER_RESPONSE_ERROR;
-    LPCLIB_Result result;
+    static char s[300];
 
     /* Read action (second field) */
     int action;
     if (sscanf(commandLine, "%*d,%d", &action) == 1) {
         switch (action) {
-        case 0:     /* Ping */
+        case 0:     /* Ping. Response "1" indicates loader mode. */
             response = "1";
             break;
 
@@ -287,8 +345,10 @@ LPCLIB_Result LOADER_processCommand (LOADER_Handle handle, const char *commandLi
                 handle->terminate = true;
             }
             else {
-                /* Erase firmware image */
-                _LOADER_eraseFirmware(handle);
+                if (handle->mode == LOADER_MODE_FIRMWARE) {
+                    /* Erase firmware image */
+                    _LOADER_eraseFirmware(handle);
+                }
 
                 CRC_seed(handle->crc, 0xFFFFFFFF);
 
@@ -296,6 +356,7 @@ LPCLIB_Result LOADER_processCommand (LOADER_Handle handle, const char *commandLi
                 handle->segment = 0;
                 handle->currentPage = (uint16_t)-1;
                 handle->pageDirty = false;
+                handle->configOffset = 0;
                 response = LOADER_RESPONSE_OK;
             }
             break;
@@ -318,38 +379,67 @@ LPCLIB_Result LOADER_processCommand (LOADER_Handle handle, const char *commandLi
             /* We can only finalize if we are in transfer state */
             if (handle->state == LOADER_STATE_TRANSFER) {
                 /* Flush partially filled buffer */
-                result = LPCLIB_SUCCESS;
-                if ((handle->currentPage * 256 >= FIRMWARE_START_ADDRESS) &&
-                    (handle->currentPage * 256 < FIRMWARE_END_ADDRESS)) {
-
-                    result = _LOADER_flushPage(handle);
-                }
-                if (result == LPCLIB_SUCCESS) {
+                if (_LOADER_flushPage(handle) == LPCLIB_SUCCESS) {
                     /* Verify received CRC-32 against the locally created checksum */
                     uint32_t hostCRC32;
-                    if (sscanf(commandLine, "%*d,%*d,%lu", &hostCRC32) == 1) {
+                    if (sscanf(commandLine, "%*d,%*d,%"PRIu32, &hostCRC32) == 1) {
                         if (hostCRC32 == CRC_read(handle->crc)) {
-                            CRC_close(&handle->crc);
-
-                            /* Check firmware stack address to distinguish Niobe1/2 */
-                            uint32_t stackAddress = ((volatile uint32_t *)FIRMWARE_START_ADDRESS)[0];
-                            bool firmwareAcceptable = false;
+                            if (handle->mode == LOADER_MODE_FIRMWARE) {
+                                /* Check firmware stack address to distinguish Niobe1/2 */
+                                uint32_t stackAddress = ((volatile uint32_t *)FIRMWARE_START_ADDRESS)[0];
+                                bool firmwareAcceptable = false;
 #if (BOARD_RA == 1)
-                            firmwareAcceptable = (stackAddress < 0x04000000);
+                                firmwareAcceptable = (stackAddress < 0x04000000);
 #endif
 #if (BOARD_RA == 2)
-                            firmwareAcceptable = (stackAddress >= 0x04000000);
+                                firmwareAcceptable = (stackAddress >= 0x04000000);
 #endif
 
-                            if (firmwareAcceptable) {
-                                /* Calculate signature of loaded firmware */
-                                signImage(FIRMWARE_START_ADDRESS, FIRMWARE_END_ADDRESS);
+                                if (firmwareAcceptable) {
+                                    CRC_close(&handle->crc);
 
-                                response = LOADER_RESPONSE_OK;
-                                handle->state = LOADER_STATE_IDLE;
+                                    /* Calculate signature of loaded firmware */
+                                    signImage(FIRMWARE_START_ADDRESS, FIRMWARE_END_ADDRESS);
 
-                                // Restart system after some time
-                                osTimerStart(handle->actionTick, 500);
+                                    response = LOADER_RESPONSE_OK;
+                                    handle->state = LOADER_STATE_IDLE;
+
+                                    // Restart system after some time
+                                    osTimerStart(handle->actionTick, 500);
+                                }
+                            }
+
+                            if (handle->mode == LOADER_MODE_CONFIG) {
+                                uint32_t sectorNumber;
+                                uint32_t pageNumber1;
+                                uint32_t pageNumber2;
+
+                                /* Save config block in flash. */
+                                __disable_irq();
+
+                                IAP_address2SectorNumber((uint32_t)&__CONFIG_ADDRESS__, &sectorNumber, NULL);
+                                IAP_address2PageNumber((uint32_t)&__CONFIG_ADDRESS__, &pageNumber1, NULL);
+                                IAP_address2PageNumber((uint32_t)&__CONFIG_ADDRESS__ + sizeof(Config_t) - 1, &pageNumber2, NULL);
+
+                                result = IAP_prepareSectorsForWriteOperation(sectorNumber, sectorNumber, NULL);
+                                if (result == LPCLIB_SUCCESS) {
+                                    result = IAP_erasePages(pageNumber1, pageNumber2, NULL);
+                                    if (result == LPCLIB_SUCCESS) {
+                                        result = IAP_prepareSectorsForWriteOperation(sectorNumber, sectorNumber, NULL);
+                                        if (result == LPCLIB_SUCCESS) {
+                                            result = IAP_copyRamToFlash(
+                                                    (uint32_t)&__CONFIG_ADDRESS__,
+                                                    (uint32_t)&handle->config,
+                                                    sizeof(Config_t),   /* NOTE: This MUST be a multiple of 256! */
+                                                    NULL);
+                                            if (result == LPCLIB_SUCCESS) {
+                                                response = LOADER_RESPONSE_OK;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                __enable_irq();
                             }
                         }
                     }
@@ -357,18 +447,36 @@ LPCLIB_Result LOADER_processCommand (LOADER_Handle handle, const char *commandLi
             }
             break;
 
-        case 9:     /* Restart */
+        case 4:     /* Read */
             {
-                osTimerStart(handle->actionTick, 500);
-                response = LOADER_RESPONSE_OK;
+                if (handle->configOffset >= sizeof(Config_t)) {
+                    /* When end of config structure reached, just send indicator */
+                    response = "1";
+                } else {
+                    /* Send next chunk of config structure */
+                    uint8_t *p = (uint8_t *)&__CONFIG_ADDRESS__;
+                    int n = snprintf(s, sizeof(s), "0,:00%04"PRIX32"80", handle->configOffset);
+                    uint8_t checksum = 0;
+                    for (int i = 0; i < 128; i++) {
+                        uint8_t b = p[handle->configOffset + i];
+                        n += snprintf(&s[n], sizeof(s) - n, "%02X", b);
+                        checksum -= b;
+                    }
+                    snprintf(&s[n], sizeof(s) - n, "%02X", checksum);
+                    response = s;
+
+                    handle->configOffset = (handle->configOffset >= sizeof(Config_t)) ?
+                            handle->configOffset
+                        : handle->configOffset + 128;
+                }
             }
             break;
         }
 
-        _LOADER_sendResponse(action, response);
+        _LOADER_sendResponse(handle, action, response);
     }
 
-    return LPCLIB_SUCCESS;
+    return result;
 }
 
 

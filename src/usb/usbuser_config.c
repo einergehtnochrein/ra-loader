@@ -110,7 +110,9 @@ void USBUSER_open (_Bool uartBridge)
 
     /* Set the USB descriptors */
     handle->desc.device_desc = (uint8_t *) &appDeviceDescriptor;
-    handle->desc.string_desc = (uint8_t *) &theUSB_StringDescriptor;
+    handle->desc.string_desc = uartBridge ?
+            (uint8_t *) &bl652Bridge_StringDescriptor
+          : (uint8_t *) &noBridge_StringDescriptor;
 
     /* Note, to pass USBCV test full-speed only devices should have both
      * descriptor arrays point to same location and device_qualifier set
