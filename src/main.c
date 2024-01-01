@@ -326,7 +326,7 @@ int main (void)
     }
 
     if (override == 2) {
-        BL652_setMode(ble, BL652_MODE_VSP_COMMAND);
+        BL652_setMode(ble, BL652_MODE_COMMAND);
 
         CLKPWR_enableClock(CLKPWR_CLOCKSWITCH_USB);
         CLKPWR_unitPowerUp(CLKPWR_UNIT_USBPAD);
